@@ -6,7 +6,7 @@
   "license": "GPL-3.0-or-later",
   "repository": {
     "type": "git",
-    "url": "https://github.com/PiyushBarala/lokal.git"
+    "url": "https://github.com/PiyushBarala/zphase.git"
   },
   "main": "out/main/index.js",
   "scripts": {

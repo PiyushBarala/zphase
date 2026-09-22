@@ -3,7 +3,7 @@ productName: Z Phase
 publish:
   provider: github
   owner: PiyushBarala
-  repo: lokal
+  repo: zphase
 directories:
   output: dist
   buildResources: build

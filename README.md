@@ -1,28 +1,28 @@
 <div align="center">
 
-<img src="lokal.png" alt="Lokal Music Player" width="120" height="120" style="border-radius:20px" />
+<img src="public/logo.png" alt="Z Phase Music Player" width="120" height="120" style="border-radius:20px" />
 
-# Lokal — Offline-First Windows Music Player
+# Z Phase — Offline-First Windows Music Player
 
 **A beautiful, open-source local music player for Windows — built like Spotify, but for your personal library.**
 
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-green.svg)](./LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Windows-blue.svg)](https://github.com/PiyushBarala/lokal/releases)
+[![Platform](https://img.shields.io/badge/platform-Windows-blue.svg)](https://github.com/PiyushBarala/zphase/releases)
 [![Built with Electron](https://img.shields.io/badge/built%20with-Electron-47848f.svg)](https://electronjs.org)
 [![React](https://img.shields.io/badge/React-18-61dafb.svg)](https://reactjs.org)
 [![SQLite](https://img.shields.io/badge/database-SQLite-003b57.svg)](https://sqlite.org)
 
-[Download Latest Release](https://github.com/PiyushBarala/lokal/releases) · [Report a Bug](https://github.com/PiyushBarala/lokal/issues) · [Request a Feature](https://github.com/PiyushBarala/lokal/issues)
+[Download Latest Release](https://github.com/PiyushBarala/zphase/releases) · [Report a Bug](https://github.com/PiyushBarala/zphase/issues) · [Request a Feature](https://github.com/PiyushBarala/zphase/issues)
 
 </div>
 
 ---
 
-## What is Lokal?
+## What is Z Phase?
 
-**Lokal** is a free, open-source, offline-first music player for Windows that combines the familiar Spotify-like interface with full local library management. Play your MP3s, FLACs, WAVs and other audio files entirely offline — no subscription, no internet required, no telemetry.
+**Z Phase** is a free, open-source, offline-first music player for Windows that combines the familiar Spotify-like interface with full local library management. Play your MP3s, FLACs, WAVs and other audio files entirely offline — no subscription, no internet required, no telemetry.
 
-Built with Electron + React + SQLite, Lokal gives you a premium desktop music experience for your personal collection, with optional online music discovery powered by yt-dlp.
+Built with Electron + React + SQLite, Z Phase gives you a premium desktop music experience for your personal collection, with optional online music discovery powered by yt-dlp.
 
 ## ✨ Features
 
@@ -33,22 +33,22 @@ Built with Electron + React + SQLite, Lokal gives you a premium desktop music ex
 - **Liked Songs**, **Playlists**, and **Smart library views** (Albums, Artists)
 - **Drag-to-reorder** playlist tracks
 
-### 🎚️ 10-Band Equalizer
+### 🎚️ 10-Band Persistent Equalizer
 - **Persistent 10-band EQ** powered by the Web Audio API
 - **14 built-in presets**: Rock, Pop, Dance, Electronic, Jazz, Classical, Vocal, R&B, Hip-Hop, Acoustic, Bass Boost, Treble Boost, Bass & Treble, and Flat
 - **Custom preset detection** — automatically shows "Custom" when you tweak a preset
 - Settings saved and **restored across restarts**
-- **EQ bypass toggle** to A/B compare instantly
+- **EQ bypass toggle** to instantly A/B compare
 
 ### ⬇️ Music Discovery & Download
-- **Search YouTube** directly from within Lokal
+- **Search YouTube** directly from within Z Phase
 - **Download as MP3** with embedded artwork and metadata via yt-dlp
 - **Real-time download progress** with speed and ETA
 - Downloaded tracks automatically added to your library and Downloads playlist
 - Simultaneous multi-download support
 
 ### 🎛️ Playback Engine
-- HTML5 audio engine with gapless track switching
+- HTML5 audio engine with smooth track switching
 - **Shuffle, Repeat (one/all), Skip, Seek** controls
 - **10-second skip forward/backward** buttons
 - **Windows 11 SMTC** integration (system media controls, lock screen)
@@ -81,12 +81,12 @@ Built with Electron + React + SQLite, Lokal gives you a premium desktop music ex
 
 ### Download Pre-built Release (Recommended)
 
-1. Go to the [**Releases page**](https://github.com/PiyushBarala/lokal/releases)
-2. Download the latest `Lokal-Setup-x.x.x.exe` installer
-3. Run the installer — Lokal will appear in your Start Menu
+1. Go to the [**Releases page**](https://github.com/PiyushBarala/zphase/releases)
+2. Download the latest `Z Phase-Setup-x.x.x.exe` installer
+3. Run the installer — Z Phase will appear in your Start Menu
 4. On first launch, click **Add Folder** to scan your music library
 
-> **Note:** Windows may show a SmartScreen warning since Lokal is not yet code-signed. Click *More info → Run anyway* to proceed.
+> **Note:** Windows may show a SmartScreen warning since Z Phase is not yet code-signed. Click *More info → Run anyway* to proceed.
 
 ### Build from Source
 
@@ -94,8 +94,8 @@ Built with Electron + React + SQLite, Lokal gives you a premium desktop music ex
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/PiyushBarala/lokal.git
-cd lokal
+git clone https://github.com/PiyushBarala/zphase.git
+cd zphase
 
 # 2. Install dependencies
 npm install
@@ -132,7 +132,7 @@ npm run build
 ## 📂 Project Structure
 
 ```
-lokal/
+zphase/
 ├── electron/           # Electron main process
 │   ├── main.ts         # App entry, window management, IPC registration
 │   ├── preload.ts      # Context bridge (main ↔ renderer)
@@ -157,21 +157,21 @@ lokal/
 
 ## 🤝 Contributing
 
-Contributions are very welcome! Lokal is actively developed and there are many ways to help:
+Contributions are very welcome! Z Phase is actively developed and there are many ways to help:
 
 ### Ways to Contribute
 
-- 🐛 **Report bugs** — [Open an issue](https://github.com/PiyushBarala/lokal/issues)
-- 💡 **Request features** — [Open an issue](https://github.com/PiyushBarala/lokal/issues) with the `enhancement` label
+- 🐛 **Report bugs** — [Open an issue](https://github.com/PiyushBarala/zphase/issues)
+- 💡 **Request features** — [Open an issue](https://github.com/PiyushBarala/zphase/issues) with the `enhancement` label
 - 🔧 **Submit pull requests** — Fork the repo, make changes, open a PR
-- 🌍 **Translations** — Help localize Lokal for other languages
+- 🌍 **Translations** — Help localize Z Phase for other languages
 - 📸 **Screenshots** — Add screenshots to the README
 
 ### Development Setup
 
 ```bash
-git clone https://github.com/PiyushBarala/lokal.git
-cd lokal
+git clone https://github.com/PiyushBarala/zphase.git
+cd zphase
 npm install
 npm run dev
 ```
@@ -189,7 +189,7 @@ The app runs with hot-reload in development mode. Electron DevTools are availabl
 
 ## 📄 License
 
-Lokal is released under the **GNU General Public License v3.0**.
+Z Phase is released under the **GNU General Public License v3.0**.
 See [LICENSE](./LICENSE) for the full license text.
 
 ---
@@ -208,6 +208,6 @@ See [LICENSE](./LICENSE) for the full license text.
 
 Made with ❤️ for music lovers who own their audio files.
 
-**[⭐ Star this repo](https://github.com/PiyushBarala/lokal)** if you find Lokal useful!
+**[⭐ Star this repo](https://github.com/PiyushBarala/zphase)** if you find Z Phase useful!
 
 </div>
