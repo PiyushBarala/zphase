@@ -244,7 +244,7 @@ export function AudioEngine(): null {
       navigator.mediaSession.metadata = new MediaMetadata({
         title: currentTrack.title || 'Unknown Title',
         artist: currentTrack.artist || 'Unknown Artist',
-        album: currentTrack.album || 'Lokal',
+        album: currentTrack.album || 'Z Phase',
         artwork: artworkUrl
           ? [
               { src: artworkUrl, sizes: '96x96', type: 'image/png' },

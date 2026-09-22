@@ -20,7 +20,7 @@ const DEFAULTS: AppSettings = {
 
 // CSS custom properties for each accent color
 export const ACCENT_COLORS: Record<AccentColor, { hex: string; hover: string; label: string }> = {
-  green:  { hex: '#1db954', hover: '#1ed760', label: 'Lokal Green' },
+  green:  { hex: '#1db954', hover: '#1ed760', label: 'Z Phase Green' },
   purple: { hex: '#9b59f5', hover: '#ab6bf5', label: 'Purple' },
   blue:   { hex: '#2196f3', hover: '#42a5f5', label: 'Blue' },
   pink:   { hex: '#e91e8c', hover: '#f06292', label: 'Pink' },

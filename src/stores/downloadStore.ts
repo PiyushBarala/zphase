@@ -142,55 +142,13 @@ export const useDownloadStore = create<DownloadState>((set, get) => ({
 }))
 
 /**
- * Automatically add downloaded track into the "Downloads" playlist.
- * Retries up to 3 times to handle DB write lag after download completion.
+ * @deprecated The main process now handles indexing and playlist insertion
+ * atomically when a download completes. This function is kept as a no-op
+ * to avoid breaking any references, but it does nothing.
  */
-export async function ensureTrackInDownloadsPlaylist(filePath?: string, videoId?: string): Promise<void> {
-  const normTarget = filePath ? filePath.replace(/\\/g, '/').toLowerCase() : ''
-
-  const findTrack = async () => {
-    const allTracks = await window.lokal.db.getTracks()
-    return allTracks.find(
-      (t) =>
-        (normTarget && t.filePath.replace(/\\/g, '/').toLowerCase() === normTarget) ||
-        (videoId && t.sourceVideoId === videoId)
-    )
-  }
-
-  let track = await findTrack().catch(() => undefined)
-
-  // Retry up to 3 times with increasing delays if track not yet persisted
-  for (let attempt = 1; attempt <= 3 && !track?.id; attempt++) {
-    await new Promise((r) => setTimeout(r, attempt * 500))
-    track = await findTrack().catch(() => undefined)
-    if (track?.id) {
-      console.log(`[DownloadStore] Found track on retry #${attempt}`)
-    }
-  }
-
-  if (!track?.id) {
-    console.warn('[DownloadStore] Track not found in DB after 3 retries; skipping Downloads playlist insert')
-    return
-  }
-
-  try {
-    const playlists = await window.lokal.db.getPlaylists()
-    let downloadsPlaylist = playlists.find((p) => p.name.trim().toLowerCase() === 'downloads')
-    if (!downloadsPlaylist) {
-      downloadsPlaylist = await window.lokal.db.createPlaylist('Downloads')
-    }
-    if (downloadsPlaylist?.id) {
-      const existingTracks = await window.lokal.db.getPlaylistTracks(downloadsPlaylist.id)
-      const alreadyIn = existingTracks.some((t) => t.id === track!.id)
-      if (!alreadyIn) {
-        await window.lokal.db.addTrackToPlaylist(downloadsPlaylist.id, track.id)
-        await useLibraryStore.getState().refreshPlaylists()
-        console.log(`[DownloadStore] Added "${track.title}" to Downloads playlist`)
-      }
-    }
-  } catch (err) {
-    console.error('[DownloadStore] Failed to add track to Downloads playlist:', err)
-  }
+export async function ensureTrackInDownloadsPlaylist(_filePath?: string, _videoId?: string): Promise<void> {
+  // No-op: the main process (ytdlp.ts → scanAndIndexFile with addToDownloads=true)
+  // now handles this atomically before the 'completed' IPC event is emitted.
 }
 
 
@@ -217,17 +175,17 @@ export function initGlobalDownloadListener(): () => void {
     })
 
     if (progress.status === 'completed') {
-      (async () => {
-        if (progress.filePath) {
-          await window.lokal?.library?.scanFile?.(progress.filePath).catch(() => {})
-        }
+      // The main process has already indexed the track and added it to the
+      // Downloads playlist atomically before sending this event.
+      // We only need to refresh the renderer's UI state.
+      ;(async () => {
         await useLibraryStore.getState().loadLibrary()
+        await useLibraryStore.getState().refreshPlaylists()
         window.dispatchEvent(
           new CustomEvent('lokal:toast', {
             detail: 'Track downloaded and added to Downloads playlist',
           })
         )
-        await ensureTrackInDownloadsPlaylist(progress.filePath, progress.videoId)
       })().catch(console.error)
     }
   })
@@ -237,3 +195,4 @@ export function initGlobalDownloadListener(): () => void {
     isListenerInitialized = false
   }
 }
+

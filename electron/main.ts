@@ -9,7 +9,7 @@ import { registerDbHandlers } from './db/dbHandlers'
 import { registerUpdaterHandlers, checkForUpdatesQuietly, cleanupOldInstallers } from './ipc/updater'
 
 if (process.platform === 'win32') {
-  app.setAppUserModelId('com.lokal.music')
+  app.setAppUserModelId('com.zphase.music')
 }
 
 const isDev = process.env.NODE_ENV === 'development'
@@ -356,7 +356,7 @@ app.whenReady().then(async () => {
         const body = JSON.stringify({
           email: payload.email || 'anonymous',
           message: payload.message,
-          _subject: `[Lokal v${payload.version}] Bug Report`,
+          _subject: `[Z Phase v${payload.version}] Bug Report`,
           app_version: payload.version,
         })
         const https = require('https') as typeof import('https')

@@ -156,8 +156,9 @@ function applySchema(): void {
     // Column already exists or newly created
   }
 
-  // Ensure the built-in "Liked Songs" playlist exists
+  // Ensure the built-in "Liked Songs" and "Downloads" playlists exist
   db.run(`
     INSERT OR IGNORE INTO playlists (id, name) VALUES (1, 'Liked Songs');
+    INSERT OR IGNORE INTO playlists (id, name) VALUES (2, 'Downloads');
   `)
 }

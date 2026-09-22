@@ -341,7 +341,7 @@ export function PlaylistView(): React.JSX.Element {
             </p>
             <p className="text-sm text-[#727272] max-w-sm">
               {isLiked
-                ? 'Save songs you love by tapping the heart icon anywhere in Lokal.'
+                ? 'Save songs you love by tapping the heart icon anywhere in Z Phase.'
                 : 'Find songs in your library below and add them directly to this playlist.'}
             </p>
           </div>

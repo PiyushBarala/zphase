@@ -60,10 +60,10 @@ function compareVersions(v1: string, v2: string): number {
 async function checkViaRedirect(isManual = false): Promise<void> {
   return new Promise((resolve) => {
     const req = https.get(
-      'https://github.com/PiyushBarala/lokal/releases/latest',
+      'https://github.com/PiyushBarala/zphase/releases/latest',
       {
         headers: {
-          'User-Agent': 'Lokal-Music-Player/' + app.getVersion(),
+          'User-Agent': 'ZPhase-Music-Player/' + app.getVersion(),
         },
       },
       (res) => {
@@ -78,7 +78,7 @@ async function checkViaRedirect(isManual = false): Promise<void> {
                 resolve()
                 return
               }
-              const directExeUrl = `https://github.com/PiyushBarala/lokal/releases/download/v${remoteVer}/Lokal-Setup-${remoteVer}.exe`
+              const directExeUrl = `https://github.com/PiyushBarala/zphase/releases/download/v${remoteVer}/ZPhase-Setup-${remoteVer}.exe`
               sendStatus({
                 type: 'available',
                 currentVersion: currentVer,
@@ -94,7 +94,7 @@ async function checkViaRedirect(isManual = false): Promise<void> {
                 type: 'not-available',
                 currentVersion: currentVer,
                 version: currentVer,
-                message: `Lokal is up to date (v${currentVer}).`,
+                message: `Z Phase is up to date (v${currentVer}).`,
               })
               resolve()
               return
@@ -106,7 +106,7 @@ async function checkViaRedirect(isManual = false): Promise<void> {
           type: 'not-available',
           currentVersion: app.getVersion(),
           version: app.getVersion(),
-          message: `Lokal is up to date (v${app.getVersion()}).`,
+          message: `Z Phase is up to date (v${app.getVersion()}).`,
         })
         resolve()
       }
@@ -137,10 +137,10 @@ async function checkViaRedirect(isManual = false): Promise<void> {
 async function checkGitHubReleasesDirectly(isManual = false): Promise<void> {
   return new Promise((resolve) => {
     const req = https.get(
-      'https://api.github.com/repos/PiyushBarala/lokal/releases',
+      'https://api.github.com/repos/PiyushBarala/zphase/releases',
       {
         headers: {
-          'User-Agent': 'Lokal-Music-Player/' + app.getVersion(),
+          'User-Agent': 'ZPhase-Music-Player/' + app.getVersion(),
           'Accept': 'application/vnd.github.v3+json',
         },
       },
@@ -169,7 +169,7 @@ async function checkGitHubReleasesDirectly(isManual = false): Promise<void> {
                   )
                   const directExeUrl =
                     exeAsset?.browser_download_url ||
-                    `https://github.com/PiyushBarala/lokal/releases/download/v${remoteVer}/Lokal-Setup-${remoteVer}.exe`
+                    `https://github.com/PiyushBarala/zphase/releases/download/v${remoteVer}/ZPhase-Setup-${remoteVer}.exe`
 
                   sendStatus({
                     type: 'available',
@@ -187,7 +187,7 @@ async function checkGitHubReleasesDirectly(isManual = false): Promise<void> {
                     type: 'not-available',
                     currentVersion: currentVer,
                     version: currentVer,
-                    message: `Lokal is up to date (v${currentVer}).`,
+                    message: `Z Phase is up to date (v${currentVer}).`,
                   })
                   resolve()
                   return
@@ -283,7 +283,7 @@ async function downloadFileWithProgress(url: string, destPath: string, version: 
         targetUrl,
         {
           headers: {
-            'User-Agent': 'Lokal-Music-Player/' + app.getVersion(),
+            'User-Agent': 'ZPhase-Music-Player/' + app.getVersion(),
             'Accept': '*/*',
           },
         },
@@ -420,8 +420,8 @@ export function registerUpdaterHandlers(win: BrowserWindow | null): void {
       currentVersion: app.getVersion(),
       version: info.version,
       releaseNotes,
-      downloadUrl: `https://github.com/PiyushBarala/lokal/releases/download/v${info.version}/Lokal-Setup-${info.version}.exe`,
-      releasePageUrl: `https://github.com/PiyushBarala/lokal/releases/tag/v${info.version}`,
+      downloadUrl: `https://github.com/PiyushBarala/zphase/releases/download/v${info.version}/ZPhase-Setup-${info.version}.exe`,
+      releasePageUrl: `https://github.com/PiyushBarala/zphase/releases/tag/v${info.version}`,
       message: `Version ${info.version} is available.`,
     })
   })
@@ -433,7 +433,7 @@ export function registerUpdaterHandlers(win: BrowserWindow | null): void {
       type: 'not-available',
       currentVersion: app.getVersion(),
       version: info.version,
-      message: 'Lokal is up to date.',
+      message: 'Z Phase is up to date.',
     })
   })
 
@@ -527,7 +527,7 @@ export function registerUpdaterHandlers(win: BrowserWindow | null): void {
     const exeUrl =
       lastStatus.downloadUrl && lastStatus.downloadUrl.endsWith('.exe')
         ? lastStatus.downloadUrl
-        : `https://github.com/PiyushBarala/lokal/releases/download/v${version}/Lokal-Setup-${version}.exe`
+        : `https://github.com/PiyushBarala/zphase/releases/download/v${version}/ZPhase-Setup-${version}.exe`
 
     sendStatus({
       type: 'downloading',
@@ -542,7 +542,7 @@ export function registerUpdaterHandlers(win: BrowserWindow | null): void {
     // Direct in-app background downloader
     try {
       const updatesDir = path.join(app.getPath('userData'), 'updates')
-      const fileName = `Lokal-Setup-${version}.exe`
+      const fileName = `ZPhase-Setup-${version}.exe`
       const destPath = path.join(updatesDir, fileName)
 
       downloadFileWithProgress(exeUrl, destPath, version).catch((dlErr) => {
@@ -568,7 +568,7 @@ export function registerUpdaterHandlers(win: BrowserWindow | null): void {
   })
 
   ipcMain.handle('updater:open-url', (_e, url?: string) => {
-    const target = url || lastStatus.releasePageUrl || 'https://github.com/PiyushBarala/lokal/releases/latest'
+    const target = url || lastStatus.releasePageUrl || 'https://github.com/PiyushBarala/zphase/releases/latest'
     shell.openExternal(target)
     return { success: true }
   })

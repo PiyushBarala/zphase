@@ -118,11 +118,11 @@ function AboutModal({ onClose }: { onClose: () => void }) {
 
         <img
           src={lokalLogo}
-          alt="Lokal"
+          alt="Z Phase"
           className="w-20 h-20 rounded-2xl shadow-xl mb-4 border border-white/10 object-cover"
         />
 
-        <h2 className="text-xl font-bold text-white tracking-tight">Lokal</h2>
+        <h2 className="text-xl font-bold text-white tracking-tight">Z Phase</h2>
         <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-accent/20 text-accent mt-1 mb-3">
           v{version} (Windows x64)
         </span>
@@ -179,7 +179,7 @@ function AboutModal({ onClose }: { onClose: () => void }) {
                 <span>v{status.version} downloaded & ready!</span>
               </div>
               <p className="text-[11px] text-[#b3b3b3]">
-                Restart Lokal now to install the new update.
+                Restart Z Phase now to install the new update.
               </p>
               <button
                 onClick={handleInstall}
@@ -201,7 +201,7 @@ function AboutModal({ onClose }: { onClose: () => void }) {
                 <span>New version available: v{status.version}</span>
               </div>
               <p className="text-[11px] text-[#b3b3b3] leading-normal">
-                An update is ready for Lokal. Download it in the background or skip for now.
+                An update is ready for Z Phase. Download it in the background or skip for now.
               </p>
               <div className="flex items-center gap-2 w-full mt-1">
                 <button
@@ -276,7 +276,7 @@ function AboutModal({ onClose }: { onClose: () => void }) {
               </div>
               <div className="flex-1">
                 <p className="text-sm font-semibold text-white group-hover:text-white/90">Report a Bug</p>
-                <p className="text-[11px] text-[#555] mt-0.5">Help us improve Lokal</p>
+                <p className="text-[11px] text-[#555] mt-0.5">Help us improve Z Phase</p>
               </div>
               <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12" className="text-[#444] group-hover:text-[#666] flex-shrink-0">
                 <path d="M8.59 16.59L10 18l6-6-6-6-1.41 1.41L13.17 12z" />
@@ -290,7 +290,7 @@ function AboutModal({ onClose }: { onClose: () => void }) {
                 </svg>
               </div>
               <p className="text-sm font-semibold text-white">Bug report sent!</p>
-              <p className="text-[11px] text-[#666]">Thanks for helping improve Lokal.</p>
+              <p className="text-[11px] text-[#666]">Thanks for helping improve Z Phase.</p>
               <button
                 onClick={() => { setShowBugForm(false); setBugEmail(''); setBugMessage(''); setBugResult(null) }}
                 className="text-[11px] text-accent hover:underline mt-1"
@@ -442,7 +442,7 @@ export function SettingsMenu({ onPickFolder }: SettingsMenuProps): React.JSX.Ele
       if (st.type === 'downloaded') {
         window.dispatchEvent(
           new CustomEvent('lokal:toast', {
-            detail: `✨ Lokal update ready! Open About to restart & install.`
+            detail: `✨ Z Phase update ready! Open About to restart & install.`
           })
         )
       }
@@ -811,7 +811,7 @@ export function SettingsMenu({ onPickFolder }: SettingsMenuProps): React.JSX.Ele
                     }}
                     className="px-3 py-1.5 flex items-center justify-between hover:bg-[#333333] hover:text-white cursor-pointer"
                   >
-                    <span>About Lokal</span>
+                    <span>About Z Phase</span>
                   </div>
                   <div
                     onClick={() => {

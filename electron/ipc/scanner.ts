@@ -3,7 +3,7 @@ import * as fs from 'fs'
 import { promises as fsp } from 'fs'
 import * as path from 'path'
 import * as crypto from 'crypto'
-import { writeTracksToDb } from '../db/dbHandlers'
+import { writeTracksToDb, addTrackToDownloadsPlaylist } from '../db/dbHandlers'
 
 // music-metadata is ESM-only (v9+). In an electron-vite CJS bundle,
 // static `import * as mm` produces a broken namespace. Dynamic import()
@@ -347,10 +347,12 @@ export function registerScannerHandlers(): void {
 
 /**
  * Scan a single audio file, write its metadata to SQLite DB, and return the scanned track.
+ * @param addToDownloadsPlaylist - when true, atomically adds the track to the Downloads playlist
  */
 export async function scanAndIndexFile(
   filePath: string,
-  sourceVideoId?: string | null
+  sourceVideoId?: string | null,
+  addToDownloads: boolean = false
 ): Promise<ScannedTrack | null> {
   const normalizedPath = path.normalize(filePath)
   // Retry up to 3 times with backoff in case Windows file handle (e.g. from ffmpeg) is still releasing
@@ -367,8 +369,31 @@ export async function scanAndIndexFile(
       if (sourceVideoId) {
         track.sourceVideoId = sourceVideoId
       }
-      writeTracksToDb([track as (ScannedTrack & { artworkData: Buffer | null })])
+      const newRows = writeTracksToDb([track as (ScannedTrack & { artworkData: Buffer | null })])
       console.log(`[Scanner] Indexed single file: ${track.artist} – ${track.title}${sourceVideoId ? ` (source: ${sourceVideoId})` : ''}`)
+
+      if (addToDownloads) {
+        // Resolve the track's DB id — look it up by normalized file path
+        try {
+          const { getDb } = await import('../db/database')
+          const db = getDb()
+          const stmt = db.prepare('SELECT id FROM tracks WHERE file_path = ?')
+          stmt.bind([normalizedPath])
+          let trackId: number | null = null
+          if (stmt.step()) {
+            const row = stmt.getAsObject() as Record<string, unknown>
+            trackId = row.id as number
+          }
+          stmt.free()
+          if (trackId) {
+            addTrackToDownloadsPlaylist(trackId)
+            console.log(`[Scanner] Added track id=${trackId} to Downloads playlist`)
+          }
+        } catch (plErr) {
+          console.error('[Scanner] Failed to add track to Downloads playlist:', plErr)
+        }
+      }
+
       return {
         ...track,
         artworkData: null

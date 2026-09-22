@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useLibraryStore } from '../stores/libraryStore'
 import { usePlayerStore } from '../stores/playerStore'
-import type { YtSearchResult, DownloadProgress, DownloadItem, Track } from '../types'
+import type { YtSearchResult, DownloadItem, Track } from '../types'
 
 function PreviewThumbnail({
   src,
@@ -128,45 +128,6 @@ export function DownloadView(): React.JSX.Element {
 
   const searchInputRef = useRef<HTMLInputElement>(null)
   const lastSeedIdRef = useRef<string | null>(null)
-
-  // Automatically add downloaded tracks into the "Downloads" playlist
-  const ensureAddedToDownloadsPlaylist = useCallback(async (filePath?: string, videoId?: string) => {
-    try {
-      const normTarget = filePath ? filePath.replace(/\\/g, '/').toLowerCase() : ''
-      let allTracks = await window.lokal.db.getTracks()
-      let track = allTracks.find(
-        (t) => (normTarget && t.filePath.replace(/\\/g, '/').toLowerCase() === normTarget) ||
-               (videoId && t.sourceVideoId === videoId)
-      )
-
-      if (!track?.id) {
-        await new Promise((r) => setTimeout(r, 400))
-        allTracks = await window.lokal.db.getTracks()
-        track = allTracks.find(
-          (t) => (normTarget && t.filePath.replace(/\\/g, '/').toLowerCase() === normTarget) ||
-                 (videoId && t.sourceVideoId === videoId)
-        )
-      }
-
-      if (!track?.id) return
-
-      const playlists = await window.lokal.db.getPlaylists()
-      let downloadsPlaylist = playlists.find((p) => p.name.trim().toLowerCase() === 'downloads')
-      if (!downloadsPlaylist) {
-        downloadsPlaylist = await window.lokal.db.createPlaylist('Downloads')
-      }
-      if (downloadsPlaylist?.id) {
-        const existingTracks = await window.lokal.db.getPlaylistTracks(downloadsPlaylist.id)
-        const alreadyIn = existingTracks.some((t) => t.id === track.id)
-        if (!alreadyIn) {
-          await window.lokal.db.addTrackToPlaylist(downloadsPlaylist.id, track.id)
-          await refreshPlaylists()
-        }
-      }
-    } catch (err) {
-      console.error('[DownloadView] Failed to add track to Downloads playlist:', err)
-    }
-  }, [refreshPlaylists])
 
   // Initialize download folder (prioritizing user's scanFolder, else default music folder)
   useEffect(() => {
@@ -343,18 +304,15 @@ export function DownloadView(): React.JSX.Element {
         return { success: false }
       }
 
-      if (res.filePath) {
-        await window.lokal?.library?.scanFile?.(res.filePath).catch(() => {})
-        await loadLibrary()
-        await ensureAddedToDownloadsPlaylist(res.filePath, item.id)
-      }
-
+      // The main process has already indexed the file and added it to the
+      // Downloads playlist atomically. The global listener in downloadStore.ts
+      // handles the UI refresh (loadLibrary + refreshPlaylists + toast).
       return { success: true, filePath: res.filePath }
     } catch (err: any) {
       updateDownload(item.id, { status: 'error', error: err?.message || 'Download failed' })
       return { success: false }
     }
-  }, [targetFolder, addDownload, updateDownload, loadLibrary, ensureAddedToDownloadsPlaylist])
+  }, [targetFolder, addDownload, updateDownload])
 
   const cancelDownload = async (videoId: string) => {
     await window.lokal.ytdlp.cancel(videoId)
@@ -451,21 +409,19 @@ export function DownloadView(): React.JSX.Element {
     setDownloadAllProgress(null)
 
     // Ensure 100% of downloaded files in the target folder are indexed in SQLite
+    // (catches any edge cases where the per-download indexing may have failed)
     try {
       await window.lokal.ytdlp.syncFolder(targetFolder || undefined)
     } catch (e) {
       console.error('[DownloadView] Sync folder error:', e)
     }
 
+    // Refresh the UI once for all completed downloads
     await loadLibrary()
+    await refreshPlaylists()
 
-    // After all downloads finish, ensure all downloaded tracks are in the "Downloads" playlist
     if (downloadedVideoIds.length > 0) {
-      for (const vid of downloadedVideoIds) {
-        await ensureAddedToDownloadsPlaylist(undefined, vid)
-      }
-
-      // Also create a named radio/mix playlist if in related mix mode
+      // Create a named radio/mix playlist if in related mix mode
       const radioName = isRelatedMode ? `Mix: ${seedTitle || 'Radio'}` : `Downloads (${new Date().toLocaleDateString()})`
       try {
         const pl = await window.lokal.db.createPlaylist(radioName)

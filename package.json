@@ -1,7 +1,7 @@
 {
-  "name": "lokal",
+  "name": "zphase",
   "version": "2.2.0",
-  "description": "A local-first offline music player for windows",
+  "description": "Z Phase — offline-first Windows music player",
   "author": "Piyush Barala",
   "license": "GPL-3.0-or-later",
   "repository": {

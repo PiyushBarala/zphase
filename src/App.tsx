@@ -48,7 +48,7 @@ function AppUpdateBanner() {
         <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
           <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
         </svg>
-        <span>Lokal v{updateStatus.version} downloaded into app!</span>
+        <span>Z Phase v{updateStatus.version} downloaded into app!</span>
         <button
           onClick={() => window.lokal?.updater?.quitAndInstall()}
           className="px-3 py-1 bg-black text-white rounded-full hover:bg-[#222] transition-transform active:scale-95 font-bold text-xs shadow-sm"

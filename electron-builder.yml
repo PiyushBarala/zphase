@@ -1,5 +1,5 @@
-appId: com.lokal.music
-productName: Lokal
+appId: com.zphase.music
+productName: Z Phase
 publish:
   provider: github
   owner: PiyushBarala
@@ -43,7 +43,7 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: always
   createStartMenuShortcut: true
-  shortcutName: Lokal
+  shortcutName: Z Phase
   runAfterFinish: true
 portable:
   artifactName: ${productName}-Portable-${version}.${ext}

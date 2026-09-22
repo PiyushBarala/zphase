@@ -176,6 +176,28 @@ export function writeTracksToDb(scannedTracks: (ScannedTrack & { artworkData: Bu
 }
 
 // ────────────────────────────────────────────────────────────
+// Public: add a track to the Downloads playlist atomically
+// ────────────────────────────────────────────────────────────
+
+/**
+ * Insert a track into the Downloads playlist (id = 2) using INSERT OR IGNORE
+ * so concurrent calls are safe and idempotent.
+ * Returns the track id on success, or null if the track wasn't found.
+ */
+export function addTrackToDownloadsPlaylist(trackId: number): boolean {
+  const db = getDb()
+  const pos = execRows(
+    'SELECT COALESCE(MAX(position), -1) + 1 AS next FROM playlist_tracks WHERE playlist_id = 2'
+  )[0].next as number
+  db.run(
+    'INSERT OR IGNORE INTO playlist_tracks (playlist_id, track_id, position) VALUES (2, ?, ?)',
+    [trackId, pos]
+  )
+  persistDb()
+  return true
+}
+
+// ────────────────────────────────────────────────────────────
 // IPC handlers
 // ────────────────────────────────────────────────────────────
 
@@ -187,6 +209,10 @@ const TRACKS_SQL = `
 `
 
 export function registerDbHandlers(): void {
+
+  ipcMain.handle('db:add-track-to-downloads-playlist', (_e, trackId: number) => {
+    return addTrackToDownloadsPlaylist(trackId)
+  })
 
   ipcMain.handle('db:get-tracks', () => {
     const rows = execRows(`${TRACKS_SQL} ORDER BY ar.name COLLATE NOCASE, al.name COLLATE NOCASE, t.disc_number, t.track_number`)

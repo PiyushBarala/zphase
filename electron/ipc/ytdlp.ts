@@ -3,7 +3,7 @@ import { spawn, exec, ChildProcess } from 'node:child_process'
 import * as path from 'node:path'
 import * as fs from 'node:fs'
 import { scanAndIndexFile, extractMetadata, type ScannedTrack } from './scanner'
-import { getAllTrackFilePaths, writeTracksToDb } from '../db/dbHandlers'
+import { getAllTrackFilePaths, writeTracksToDb, addTrackToDownloadsPlaylist } from '../db/dbHandlers'
 
 export interface YtSearchResult {
   id: string
@@ -86,6 +86,19 @@ function getPreviewThumbnail(item: any, videoId: string): string {
 }
 
 const activeDownloads = new Map<string, ChildProcess>()
+
+/**
+ * Serialises the "find my file" fallback directory scan so that concurrent
+ * downloads don't scan the folder simultaneously and steal each other's files.
+ * Only one download at a time runs the fallback scan; others queue behind it.
+ */
+let _scanQueueTail: Promise<void> = Promise.resolve()
+function withScanQueue<T>(fn: () => Promise<T>): Promise<T> {
+  const result = _scanQueueTail.then(fn)
+  // The queue tail advances regardless of inner success/failure
+  _scanQueueTail = result.then(() => {}, () => {})
+  return result
+}
 
 export function registerYtDlpHandlers(): void {
   // ── 1. Search by name / keyword ──
@@ -355,51 +368,57 @@ export function registerYtDlpHandlers(): void {
           // 1. Locate the downloaded audio file
           let finalAudio = resolvedFilePath
           if (!finalAudio || !fs.existsSync(finalAudio)) {
-            try {
-              const allAudioFiles = fs.readdirSync(outDir)
-                .filter((f) => AUDIO_EXTS.some((ext) => f.toLowerCase().endsWith(ext)))
-                .map((f) => {
-                  const p = path.normalize(path.join(outDir, f))
-                  try {
-                    const st = fs.statSync(p)
-                    return { path: p, name: f, time: st.mtimeMs, size: st.size }
-                  } catch {
-                    return null
+            // Use the mutex queue so concurrent downloads don't scan simultaneously
+            // and accidentally pick each other's just-written files.
+            finalAudio = await withScanQueue(async () => {
+              let found: string | null = null
+              try {
+                const allAudioFiles = fs.readdirSync(outDir)
+                  .filter((f) => AUDIO_EXTS.some((ext) => f.toLowerCase().endsWith(ext)))
+                  .map((f) => {
+                    const p = path.normalize(path.join(outDir, f))
+                    try {
+                      const st = fs.statSync(p)
+                      return { path: p, name: f, time: st.mtimeMs, size: st.size }
+                    } catch {
+                      return null
+                    }
+                  })
+                  .filter((f): f is NonNullable<typeof f> => f !== null && f.size > 20000)
+
+                // Check for brand new files created during this download session
+                const brandNewFiles = allAudioFiles.filter(
+                  (f) => !existingBeforeDownload.has(f.name.toLowerCase())
+                )
+                if (brandNewFiles.length > 0) {
+                  brandNewFiles.sort((a, b) => b.time - a.time)
+                  found = brandNewFiles[0].path
+                }
+
+                // If title was provided, try matching filename with full words if not yet found
+                if (!found && title) {
+                  const cleanTitleWords = title.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').split(/\s+/).filter((w) => w.length > 2)
+                  const titleMatch = allAudioFiles.find((f) => {
+                    const fnLower = f.name.toLowerCase()
+                    return cleanTitleWords.length > 0 && cleanTitleWords.filter((w) => fnLower.includes(w)).length >= Math.min(3, cleanTitleWords.length)
+                  })
+                  if (titleMatch) {
+                    found = titleMatch.path
                   }
-                })
-                .filter((f): f is NonNullable<typeof f> => f !== null && f.size > 20000)
-
-              // Check for brand new files created during this download session
-              const brandNewFiles = allAudioFiles.filter(
-                (f) => !existingBeforeDownload.has(f.name.toLowerCase())
-              )
-              if (brandNewFiles.length > 0) {
-                brandNewFiles.sort((a, b) => b.time - a.time)
-                finalAudio = brandNewFiles[0].path
-              }
-
-              // If title was provided, try matching filename with full words if not yet found
-              if (!finalAudio && title) {
-                const cleanTitleWords = title.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').split(/\s+/).filter((w) => w.length > 2)
-                const titleMatch = allAudioFiles.find((f) => {
-                  const fnLower = f.name.toLowerCase()
-                  return cleanTitleWords.length > 0 && cleanTitleWords.filter((w) => fnLower.includes(w)).length >= Math.min(3, cleanTitleWords.length)
-                })
-                if (titleMatch) {
-                  finalAudio = titleMatch.path
                 }
-              }
 
-              // Fallback: take the most recent audio file modified since download began
-              if (!finalAudio) {
-                const recent = allAudioFiles
-                  .filter((f) => f.time >= startTime - 10000)
-                  .sort((a, b) => b.time - a.time)
-                if (recent.length > 0) {
-                  finalAudio = recent[0].path
+                // Fallback: take the most recent audio file modified since download began
+                if (!found) {
+                  const recent = allAudioFiles
+                    .filter((f) => f.time >= startTime - 10000)
+                    .sort((a, b) => b.time - a.time)
+                  if (recent.length > 0) {
+                    found = recent[0].path
+                  }
                 }
-              }
-            } catch {}
+              } catch {}
+              return found
+            })
           }
 
           const isFileValid = Boolean(finalAudio && fs.existsSync(finalAudio))
@@ -407,10 +426,12 @@ export function registerYtDlpHandlers(): void {
           if (code === 0 || isFileValid) {
             console.log(`[yt-dlp download] Completed. Final audio file: ${finalAudio}`)
 
-            // Index into database immediately with sourceVideoId
+            // Index into database immediately with sourceVideoId, and atomically
+            // add to the Downloads playlist — all on the main process before
+            // notifying the renderer, so there is no renderer-side race.
             if (finalAudio && fs.existsSync(finalAudio)) {
               try {
-                await scanAndIndexFile(finalAudio, videoId)
+                await scanAndIndexFile(finalAudio, videoId, /* addToDownloads */ true)
               } catch (err) {
                 console.error('[yt-dlp download] Failed to index downloaded file:', err)
               }
@@ -611,7 +632,7 @@ export function registerYtDlpHandlers(): void {
 /**
  * Fast batch sync of a music / download directory with lokal.db.
  * Compares files against existing database tracks, parses metadata only for missing tracks,
- * writes them in a single batch, and notifies all windows.
+ * writes them in a single batch, adds them to the Downloads playlist, and notifies all windows.
  */
 export async function syncFolderTracks(folderPath?: string): Promise<{ synced: number; error?: string }> {
   let outDir = folderPath
@@ -669,6 +690,28 @@ export async function syncFolderTracks(folderPath?: string): Promise<{ synced: n
     if (scannedTracks.length > 0) {
       writeTracksToDb(scannedTracks)
       console.log(`[syncFolderTracks] Successfully indexed ${scannedTracks.length} tracks into DB`)
+
+      // Add each newly-indexed track to the Downloads playlist
+      try {
+        const { getDb } = await import('../db/database')
+        const db = getDb()
+        for (const t of scannedTracks) {
+          const normPath = path.normalize(t.filePath)
+          const stmt = db.prepare('SELECT id FROM tracks WHERE file_path = ?')
+          stmt.bind([normPath])
+          if (stmt.step()) {
+            const row = stmt.getAsObject() as Record<string, unknown>
+            const trackId = row.id as number
+            if (trackId) {
+              addTrackToDownloadsPlaylist(trackId)
+            }
+          }
+          stmt.free()
+        }
+        console.log(`[syncFolderTracks] Added ${scannedTracks.length} tracks to Downloads playlist`)
+      } catch (plErr) {
+        console.error('[syncFolderTracks] Failed to add tracks to Downloads playlist:', plErr)
+      }
 
       // Broadcast update to all windows
       for (const win of BrowserWindow.getAllWindows()) {
