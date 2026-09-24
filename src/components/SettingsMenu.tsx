@@ -376,7 +376,7 @@ function AboutModal({ onClose }: { onClose: () => void }) {
 
           {/* GitHub */}
           <a
-            href="https://github.com/PiyushBarala/lokal"
+            href="https://github.com/PiyushBarala/zphase"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-3 w-full px-4 py-3 bg-[#181818] hover:bg-[#1f1f1f] border border-white/5 hover:border-white/10 rounded-xl transition-all group"
@@ -388,7 +388,7 @@ function AboutModal({ onClose }: { onClose: () => void }) {
             </div>
             <div className="flex-1 text-left">
               <p className="text-sm font-semibold text-white group-hover:text-white/90">View Source on GitHub</p>
-              <p className="text-[11px] text-[#555] mt-0.5">PiyushBarala/lokal · Open source</p>
+              <p className="text-[11px] text-[#555] mt-0.5">PiyushBarala/zphase · Open source</p>
             </div>
             <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12" className="text-[#444] group-hover:text-[#666] flex-shrink-0">
               <path d="M19 19H5V5h7V3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z" />
