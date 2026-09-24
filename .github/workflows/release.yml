@@ -43,7 +43,6 @@ jobs:
             -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" `
             -OutFile "ffmpeg.zip"
           Write-Host "Extracting ffmpeg.exe..."
-          # Extract only ffmpeg.exe from the nested bin/ folder
           Add-Type -AssemblyName System.IO.Compression.FileSystem
           $zip = [System.IO.Compression.ZipFile]::OpenRead("$PWD\ffmpeg.zip")
           $ffmpegEntry = $zip.Entries | Where-Object { $_.Name -eq 'ffmpeg.exe' } | Select-Object -First 1
@@ -62,8 +61,32 @@ jobs:
         env:
           NODE_ENV: production
 
-      - name: Package and publish release
-        run: npx electron-builder --win --publish always
+      - name: Package Windows installers
+        run: npx electron-builder --win --publish never
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_ENV: production
+
+      - name: Generate SHA256 checksums
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          $outFile = "dist\checksums-sha256.txt"
+          $files = Get-ChildItem dist -Filter "*.exe"
+          $lines = @()
+          foreach ($f in $files) {
+            $hash = (Get-FileHash $f.FullName -Algorithm SHA256).Hash.ToLower()
+            $lines += "$hash  $($f.Name)"
+            Write-Host "$($f.Name): $hash"
+          }
+          $lines | Set-Content $outFile
+          Write-Host "Checksum file written to $outFile"
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.exe
+            dist/checksums-sha256.txt
+          generate_release_notes: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
