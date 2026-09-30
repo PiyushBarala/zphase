@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react'
-import { usePlayerStore, persistPlayerSession } from '../stores/playerStore'
+import { usePlayerStore, persistPlayerSession, initialSession } from '../stores/playerStore'
 import { useEqualizerStore, EQ_BANDS } from '../stores/equalizerStore'
 
 /**
@@ -133,13 +133,14 @@ export function seekAudio(position: number): void {
  */
 export function AudioEngine(): null {
   const audioRef = useRef<HTMLAudioElement | null>(null)
-  const initialSeekAppliedRef = useRef(false)
+  const initialSeekAppliedRef = useRef(!initialSession?.track)
+  const targetSeekRef = useRef(initialSession?.seekPosition ?? 0)
   const lastPersistTimeRef = useRef(0)
 
   // Create the audio element once and publish the module-level ref
   if (!audioRef.current) {
     audioRef.current = new Audio()
-    audioRef.current.preload = 'metadata'
+    audioRef.current.preload = 'auto'
   }
   _audioEl = audioRef.current
   const audio = audioRef.current
@@ -193,6 +194,9 @@ export function AudioEngine(): null {
     const filePath = currentTrack.filePath.replace(/\\/g, '/')
     const mediaUrl = 'lokal://media/' + filePath
     if (audio.src !== mediaUrl) {
+      if (initialSession?.track && currentTrack.filePath !== initialSession.track.filePath) {
+        initialSeekAppliedRef.current = true
+      }
       audio.src = mediaUrl
       audio.load()
       // audio.currentTime resets to 0 automatically on load — no effect needed
@@ -201,6 +205,8 @@ export function AudioEngine(): null {
 
   // ── Play / pause sync to audio element ──────────────────────────
   useEffect(() => {
+    if (!initialSeekAppliedRef.current) return
+
     if (isPlaying) {
       if (audio.paused) {
         // Resume AudioContext if suspended (user interaction happened)
@@ -336,20 +342,49 @@ export function AudioEngine(): null {
       }
     }
 
-    const onLoadedMetadata = () => {
-      setDuration(audio.duration || 0)
-      updatePositionState()
+    const applyInitialRestore = () => {
+      if (initialSeekAppliedRef.current) return
 
-      // Restore seek position from saved session on startup
-      if (!initialSeekAppliedRef.current) {
-        initialSeekAppliedRef.current = true
-        const savedSeek = usePlayerStore.getState().seekPosition
-        if (savedSeek > 2 && savedSeek < (audio.duration || 999999) - 2) {
-          // Seek to saved position first, then start playing
-          audio.currentTime = savedSeek
-          usePlayerStore.getState().setSeek(savedSeek)
+      const savedSeek = targetSeekRef.current
+      const duration = audio.duration || 0
+
+      if (savedSeek > 1 && duration > 0 && savedSeek < duration - 1) {
+        let settled = false
+
+        const finalizePlayback = () => {
+          if (settled) return
+          settled = true
+          audio.removeEventListener('seeked', onSeeked)
+          initialSeekAppliedRef.current = true
+          setSeek(audio.currentTime)
+          usePlayerStore.setState({ isPlaying: true })
+          if (_audioCtx && _audioCtx.state === 'suspended') {
+            _audioCtx.resume().catch(() => {})
+          }
+          audio.play().catch(() => {})
         }
-        // Now start playing (was intentionally paused on session restore)
+
+        const onSeeked = () => {
+          finalizePlayback()
+        }
+
+        audio.addEventListener('seeked', onSeeked, { once: true })
+
+        try {
+          audio.currentTime = savedSeek
+        } catch (e) {
+          console.warn('[AudioEngine] Initial seek assignment error:', e)
+          finalizePlayback()
+        }
+
+        // Safety fallback: if 'seeked' event does not fire within 700ms, start playback
+        setTimeout(() => {
+          if (!settled) {
+            finalizePlayback()
+          }
+        }, 700)
+      } else {
+        initialSeekAppliedRef.current = true
         usePlayerStore.setState({ isPlaying: true })
         if (_audioCtx && _audioCtx.state === 'suspended') {
           _audioCtx.resume().catch(() => {})
@@ -358,7 +393,24 @@ export function AudioEngine(): null {
       }
     }
 
+    const onLoadedMetadata = () => {
+      setDuration(audio.duration || 0)
+      updatePositionState()
+      if (!initialSeekAppliedRef.current) {
+        applyInitialRestore()
+      }
+    }
+
+    const onCanPlay = () => {
+      if (!initialSeekAppliedRef.current) {
+        applyInitialRestore()
+      }
+    }
+
     const onTimeUpdate = () => {
+      // Do not overwrite seek position while initial restore is settling or while audio is actively seeking
+      if (!initialSeekAppliedRef.current || audio.seeking) return
+
       setSeek(audio.currentTime)
       updatePositionState()
 
@@ -400,14 +452,21 @@ export function AudioEngine(): null {
     }
 
     audio.addEventListener('loadedmetadata', onLoadedMetadata)
+    audio.addEventListener('canplay', onCanPlay)
     audio.addEventListener('timeupdate', onTimeUpdate)
     audio.addEventListener('durationchange', onDurationChange)
     audio.addEventListener('ended', onEnded)
     audio.addEventListener('play', onPlay)
     audio.addEventListener('pause', onPause)
 
+    // In case metadata / canplay already fired before listeners were added
+    if (audio.readyState >= 1 && !initialSeekAppliedRef.current) {
+      applyInitialRestore()
+    }
+
     return () => {
       audio.removeEventListener('loadedmetadata', onLoadedMetadata)
+      audio.removeEventListener('canplay', onCanPlay)
       audio.removeEventListener('timeupdate', onTimeUpdate)
       audio.removeEventListener('durationchange', onDurationChange)
       audio.removeEventListener('ended', onEnded)

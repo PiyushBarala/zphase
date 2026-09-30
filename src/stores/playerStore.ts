@@ -98,7 +98,7 @@ export function persistPlayerSession(state: {
   }
 }
 
-const initialSession = loadPlayerSession()
+export const initialSession = loadPlayerSession()
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
   currentTrack: initialSession?.track ?? null,
