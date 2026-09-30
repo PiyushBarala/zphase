@@ -104,7 +104,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   currentTrack: initialSession?.track ?? null,
   queue: initialSession?.queue ?? [],
   queueIndex: initialSession?.queueIndex ?? 0,
-  isPlaying: initialSession?.track ? true : false,
+  isPlaying: false, // always start paused; AudioEngine.onLoadedMetadata seeks then plays
   volume: initialSession?.volume ?? 0.8,
   isMuted: initialSession?.isMuted ?? false,
   seekPosition: initialSession?.seekPosition ?? 0,

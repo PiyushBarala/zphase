@@ -340,16 +340,21 @@ export function AudioEngine(): null {
       setDuration(audio.duration || 0)
       updatePositionState()
 
-      // Restore seek position and resume playback on startup if restored session exists
+      // Restore seek position from saved session on startup
       if (!initialSeekAppliedRef.current) {
         initialSeekAppliedRef.current = true
-        const initialSeek = usePlayerStore.getState().seekPosition
-        if (initialSeek > 0 && initialSeek < (audio.duration || 999999) - 2) {
-          audio.currentTime = initialSeek
+        const savedSeek = usePlayerStore.getState().seekPosition
+        if (savedSeek > 2 && savedSeek < (audio.duration || 999999) - 2) {
+          // Seek to saved position first, then start playing
+          audio.currentTime = savedSeek
+          usePlayerStore.getState().setSeek(savedSeek)
         }
-        if (usePlayerStore.getState().isPlaying && audio.paused) {
-          audio.play().catch(() => {})
+        // Now start playing (was intentionally paused on session restore)
+        usePlayerStore.setState({ isPlaying: true })
+        if (_audioCtx && _audioCtx.state === 'suspended') {
+          _audioCtx.resume().catch(() => {})
         }
+        audio.play().catch(() => {})
       }
     }
 
