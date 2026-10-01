@@ -1,6 +1,6 @@
 # External Binaries Directory
 
-This directory is intended for optional helper binaries used by Lokal:
+This directory is intended for optional helper binaries used by Z Phase:
 - `yt-dlp.exe`
 - `ffmpeg.exe`
 
