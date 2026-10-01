@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, ipcMain, protocol, nativeImage } from 'electron'
+import { app, BrowserWindow, shell, ipcMain, protocol, nativeImage, Tray, Menu, dialog } from 'electron'
 import { join, extname, normalize } from 'node:path'
 import fs from 'node:fs'
 import { Readable } from 'node:stream'
@@ -76,6 +76,8 @@ protocol.registerSchemesAsPrivileged([
 
 let mainWindow: BrowserWindow | null = null
 let miniPlayerWindow: BrowserWindow | null = null
+let tray: Tray | null = null
+let isQuitting = false
 
 // ─── Main window ─────────────────────────────────────────────────
 function createWindow(): void {
@@ -116,12 +118,85 @@ function createWindow(): void {
       mainWindow?.webContents.send('window:maximized-change', mainWindow?.isMaximized() ?? false)
     }
   })
-  // When main window is about to close, gracefully shut down mini player first
-  mainWindow.on('close', () => {
-    if (miniPlayerWindow && !miniPlayerWindow.isDestroyed()) {
-      miniPlayerWindow.removeAllListeners('closed')
-      miniPlayerWindow.close()
-      miniPlayerWindow = null
+  // When main window is about to close, ask user: Quit or keep in tray?
+  mainWindow.on('close', (e) => {
+    if (isQuitting) {
+      // Actually quitting — let mini player close first
+      if (miniPlayerWindow && !miniPlayerWindow.isDestroyed()) {
+        miniPlayerWindow.removeAllListeners('closed')
+        miniPlayerWindow.close()
+        miniPlayerWindow = null
+      }
+      return
+    }
+
+    e.preventDefault()
+
+    const choice = dialog.showMessageBoxSync(mainWindow!, {
+      type: 'question',
+      buttons: ['Quit Z Phase', 'Keep Playing in Background'],
+      defaultId: 1,
+      cancelId: 0,
+      title: 'Z Phase',
+      message: 'What would you like to do?',
+      detail: 'Keep playing music in the background and access Z Phase from the system tray.',
+    })
+
+    if (choice === 0) {
+      // User chose to quit
+      isQuitting = true
+      if (miniPlayerWindow && !miniPlayerWindow.isDestroyed()) {
+        miniPlayerWindow.removeAllListeners('closed')
+        miniPlayerWindow.close()
+        miniPlayerWindow = null
+      }
+      app.quit()
+    } else {
+      // User chose to keep running — minimize to tray
+      mainWindow!.hide()
+      if (!tray) {
+        const trayIcon = getAppIcon()
+        tray = new Tray(trayIcon as nativeImage)
+        tray.setToolTip('Z Phase — Music Player')
+
+        const contextMenu = Menu.buildFromTemplate([
+          {
+            label: 'Open Z Phase',
+            click: () => {
+              if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.show()
+                mainWindow.focus()
+              }
+            }
+          },
+          { type: 'separator' },
+          {
+            label: 'Quit',
+            click: () => {
+              isQuitting = true
+              if (miniPlayerWindow && !miniPlayerWindow.isDestroyed()) {
+                miniPlayerWindow.removeAllListeners('closed')
+                miniPlayerWindow.close()
+                miniPlayerWindow = null
+              }
+              app.quit()
+            }
+          }
+        ])
+
+        tray.setContextMenu(contextMenu)
+
+        tray.on('click', () => {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            if (mainWindow.isVisible()) {
+              mainWindow.focus()
+            } else {
+              mainWindow.show()
+              mainWindow.focus()
+            }
+          }
+        })
+      }
     }
   })
 
@@ -307,6 +382,11 @@ app.whenReady().then(async () => {
     else win.maximize()
   })
   ipcMain.handle('window:close', () => BrowserWindow.getFocusedWindow()?.close())
+  // Force quit (from File > Exit menu) — bypasses tray dialog
+  ipcMain.handle('app:force-quit', () => {
+    isQuitting = true
+    app.quit()
+  })
   ipcMain.handle('window:isMaximized', () => {
     const win = BrowserWindow.getFocusedWindow()
     return win ? (win.isMaximized() || win.isFullScreen()) : false
@@ -407,5 +487,6 @@ app.whenReady().then(async () => {
 })
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit()
+  // Don't quit if we're running in the tray
+  if (!tray && process.platform !== 'darwin') app.quit()
 })

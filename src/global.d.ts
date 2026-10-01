@@ -71,6 +71,14 @@ declare global {
         get: (key: string) => Promise<unknown>
         set: (key: string, value: unknown) => Promise<void>
       }
+      app: {
+        setAutostart: (enable: boolean) => Promise<boolean>
+        getAutostart: () => Promise<boolean>
+        forceQuit?: () => Promise<void>
+      }
+      feedback: {
+        submit: (payload: { email: string; message: string; version: string }) => Promise<{ ok: boolean }>
+      }
       miniplayer: {
         /** Open the always-on-top mini player window */
         open: () => Promise<void>

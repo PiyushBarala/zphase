@@ -93,6 +93,7 @@ const api = {
   app: {
     setAutostart: (enable: boolean) => ipcRenderer.invoke('app:set-autostart', enable),
     getAutostart: () => ipcRenderer.invoke('app:get-autostart'),
+    forceQuit: () => ipcRenderer.invoke('app:force-quit'),
   },
 
   // ── Mini player IPC bridge ─────────────────────────────────────

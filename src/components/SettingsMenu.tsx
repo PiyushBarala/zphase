@@ -6,24 +6,6 @@ import { seekAudio } from './AudioEngine'
 import lokalLogo from '../../public/lokal.png'
 import type { UpdateStatus } from '../types'
 
-// ── Zoom management ───────────────────────────────────────────────
-let currentZoom = 1.0
-
-export function zoomIn(): void {
-  currentZoom = Math.min(1.5, Math.round((currentZoom + 0.1) * 10) / 10)
-  document.documentElement.style.zoom = String(currentZoom)
-}
-
-export function zoomOut(): void {
-  currentZoom = Math.max(0.7, Math.round((currentZoom - 0.1) * 10) / 10)
-  document.documentElement.style.zoom = String(currentZoom)
-}
-
-export function resetZoom(): void {
-  currentZoom = 1.0
-  document.documentElement.style.zoom = '1'
-}
-
 function formatBytes(bytes?: number): string {
   if (!bytes || bytes <= 0) return '0 B'
   const k = 1024
@@ -583,7 +565,7 @@ export function SettingsMenu({ onPickFolder }: SettingsMenuProps): React.JSX.Ele
                   <div
                     onClick={() => {
                       closeMenu()
-                      window.lokal.window.close()
+                      window.lokal.app?.forceQuit?.()
                     }}
                     className="px-3 py-1.5 flex items-center justify-between hover:bg-[#333333] hover:text-white cursor-pointer text-[#ff6b6b]"
                   >
@@ -634,40 +616,10 @@ export function SettingsMenu({ onPickFolder }: SettingsMenuProps): React.JSX.Ele
               <span>View</span>
               <ChevronRight />
 
+
               {/* Submenu: View */}
               {activeCategory === 'view' && (
                 <div className="absolute left-full top-0 ml-1 min-w-[210px] bg-[#282828] rounded-md shadow-2xl py-1 border border-[#3e3e3e] text-xs">
-                  <div
-                    onClick={() => {
-                      zoomIn()
-                      closeMenu()
-                    }}
-                    className="px-3 py-1.5 flex items-center justify-between hover:bg-[#333333] hover:text-white cursor-pointer"
-                  >
-                    <span>Zoom In</span>
-                    <span className="text-[#888] text-[11px] font-mono ml-4">Ctrl+=</span>
-                  </div>
-                  <div
-                    onClick={() => {
-                      zoomOut()
-                      closeMenu()
-                    }}
-                    className="px-3 py-1.5 flex items-center justify-between hover:bg-[#333333] hover:text-white cursor-pointer"
-                  >
-                    <span>Zoom Out</span>
-                    <span className="text-[#888] text-[11px] font-mono ml-4">Ctrl+-</span>
-                  </div>
-                  <div
-                    onClick={() => {
-                      resetZoom()
-                      closeMenu()
-                    }}
-                    className="px-3 py-1.5 flex items-center justify-between hover:bg-[#333333] hover:text-white cursor-pointer"
-                  >
-                    <span>Reset Zoom</span>
-                    <span className="text-[#888] text-[11px] font-mono ml-4">Ctrl+0</span>
-                  </div>
-                  <div className="border-t border-[#3e3e3e] my-1" />
                   <div
                     onClick={() => {
                       closeMenu()

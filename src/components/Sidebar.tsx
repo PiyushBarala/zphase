@@ -43,7 +43,7 @@ const SIDEBAR_DEFAULT = 256
 
 type FilterTab = 'all' | 'playlists' | 'artists' | 'downloaded'
 
-export function Sidebar(): React.JSX.Element {
+export function Sidebar({ onToggle }: { onToggle?: () => void }): React.JSX.Element {
   const navigate = useNavigate()
   const { playlists, tracks, refreshPlaylists } = useLibraryStore()
   const { currentTrack, isPlaying } = usePlayerStore()
@@ -161,7 +161,13 @@ export function Sidebar(): React.JSX.Element {
       {/* ── Library Header ── */}
       <div className="flex items-center justify-between px-4 pt-3 pb-2 flex-shrink-0">
         <div
-          onClick={() => navigate('/library')}
+          onClick={() => {
+            if (onToggle) {
+              onToggle()
+            } else {
+              navigate('/library')
+            }
+          }}
           className="flex items-center gap-3 text-[#b3b3b3] hover:text-white cursor-pointer transition-colors"
         >
           <LibraryIcon />

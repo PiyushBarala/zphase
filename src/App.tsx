@@ -5,7 +5,6 @@ import { NowPlayingBar } from './components/NowPlayingBar'
 import { AudioEngine, seekAudio } from './components/AudioEngine'
 import { QueuePanel } from './components/QueuePanel'
 import { TopNav } from './components/TopNav'
-import { zoomIn, zoomOut, resetZoom } from './components/SettingsMenu'
 import { GlobalContextMenu } from './components/ContextMenu'
 import { ConfirmDialogProvider } from './components/ConfirmDialog'
 import { PlayerStateBroadcaster } from './components/PlayerStateBroadcaster'
@@ -132,25 +131,6 @@ function useKeyboardShortcuts() {
       const tag = (e.target as HTMLElement).tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
 
-      // Global zoom shortcuts (supporting all keyboard layouts, Shift, and Numpad)
-      if (e.ctrlKey || e.metaKey) {
-        if (e.key === '=' || e.key === '+' || e.code === 'Equal' || e.code === 'NumpadAdd') {
-          e.preventDefault()
-          zoomIn()
-          return
-        }
-        if (e.key === '-' || e.key === '_' || e.code === 'Minus' || e.code === 'NumpadSubtract') {
-          e.preventDefault()
-          zoomOut()
-          return
-        }
-        if (e.key === '0' || e.code === 'Digit0' || e.code === 'Numpad0') {
-          e.preventDefault()
-          resetZoom()
-          return
-        }
-      }
-
       switch (e.code) {
         case 'Space':
           e.preventDefault()
@@ -222,7 +202,7 @@ function useKeyboardShortcuts() {
         case 'KeyQ':
           if (e.ctrlKey && e.shiftKey) {
             e.preventDefault()
-            window.lokal.window.close()
+            window.lokal.app?.forceQuit?.()
           } else if (e.ctrlKey) {
             e.preventDefault()
             usePlayerStore.getState().toggleQueuePanel()
@@ -287,6 +267,7 @@ function AppInner(): React.JSX.Element {
   const { loadLibrary } = useLibraryStore()
   const showQueue = usePlayerStore((s) => s.showQueue)
   const isExpandedNowPlaying = usePlayerStore((s) => s.isExpandedNowPlaying)
+  const [showSidebar, setShowSidebar] = useState(true)
   useKeyboardShortcuts()
   useMiniPlayerCommands()
 
@@ -322,7 +303,16 @@ function AppInner(): React.JSX.Element {
         <TopNav />
         {/* 3-column layout: [Sidebar] [Main Content] [QueuePanel] */}
         <div className="flex flex-1 gap-2 overflow-hidden min-h-0">
-          <Sidebar />
+          {showSidebar
+            ? <Sidebar onToggle={() => setShowSidebar(false)} />
+            : <button
+                onClick={() => setShowSidebar(true)}
+                title="Show Library"
+                className="flex-shrink-0 w-10 flex items-center justify-center text-[#b3b3b3] hover:text-white hover:bg-white/5 rounded-lg transition-colors self-start mt-3 ml-1 h-10"
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9H9V9h10v2zm-4 4H9v-2h6v2zm4-8H9V5h10v2z"/></svg>
+              </button>
+          }
           <main className="flex-1 overflow-hidden bg-[#121212] rounded-lg border border-white/5 relative flex flex-col">
             <Routes>
               <Route path="/"             element={<HomeView />} />
