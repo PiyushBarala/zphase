@@ -79,6 +79,14 @@ let miniPlayerWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let isQuitting = false
 
+// Cleanly destroy tray before quitting so the process fully exits
+function destroyTray(): void {
+  if (tray) {
+    try { tray.destroy() } catch { /* ignore */ }
+    tray = null
+  }
+}
+
 // ─── Main window ─────────────────────────────────────────────────
 function createWindow(): void {
   const icon = getAppIcon()
@@ -320,12 +328,14 @@ app.whenReady().then(async () => {
   // Force quit (from File > Exit menu) — bypasses tray dialog
   ipcMain.handle('app:force-quit', () => {
     isQuitting = true
+    destroyTray()
     app.quit()
   })
   // Response from the renderer's custom close dialog
   ipcMain.on('window:close-response', (_e, choice: 'quit' | 'tray') => {
     if (choice === 'quit') {
       isQuitting = true
+      destroyTray()
       if (miniPlayerWindow && !miniPlayerWindow.isDestroyed()) {
         miniPlayerWindow.removeAllListeners('closed')
         miniPlayerWindow.close()
@@ -355,6 +365,7 @@ app.whenReady().then(async () => {
             label: 'Quit',
             click: () => {
               isQuitting = true
+              destroyTray()
               if (miniPlayerWindow && !miniPlayerWindow.isDestroyed()) {
                 miniPlayerWindow.removeAllListeners('closed')
                 miniPlayerWindow.close()
@@ -480,6 +491,9 @@ app.whenReady().then(async () => {
 })
 
 app.on('window-all-closed', () => {
-  // Don't quit if we're running in the tray
-  if (!tray && process.platform !== 'darwin') app.quit()
+  // Always quit when explicitly requested; otherwise only quit if no tray
+  if (isQuitting || process.platform !== 'darwin') {
+    destroyTray()
+    app.quit()
+  }
 })
