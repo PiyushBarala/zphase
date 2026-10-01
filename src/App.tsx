@@ -18,6 +18,7 @@ import { PlaylistView } from './views/PlaylistView'
 import { MiniPlayerView } from './views/MiniPlayerView'
 import { DownloadView } from './views/DownloadView'
 import { NowPlayingExpandedView } from './components/NowPlayingExpandedView'
+import { CloseDialog } from './components/CloseDialog'
 import { useLibraryStore } from './stores/libraryStore'
 import { usePlayerStore } from './stores/playerStore'
 import { initGlobalDownloadListener } from './stores/downloadStore'
@@ -268,6 +269,7 @@ function AppInner(): React.JSX.Element {
   const showQueue = usePlayerStore((s) => s.showQueue)
   const isExpandedNowPlaying = usePlayerStore((s) => s.isExpandedNowPlaying)
   const [showSidebar, setShowSidebar] = useState(true)
+  const [showCloseDialog, setShowCloseDialog] = useState(false)
   useKeyboardShortcuts()
   useMiniPlayerCommands()
 
@@ -287,9 +289,16 @@ function AppInner(): React.JSX.Element {
     }).catch(console.error)
 
     const cleanupDownloads = initGlobalDownloadListener()
+
+    // Listen for close-requested from main process -> show custom dialog
+    const unsubClose = window.lokal?.window?.onCloseRequested?.(() => {
+      setShowCloseDialog(true)
+    })
+
     return () => {
       unsubTracks?.()
       cleanupDownloads()
+      unsubClose?.()
     }
   }, [loadLibrary])
 
@@ -334,6 +343,9 @@ function AppInner(): React.JSX.Element {
         <NowPlayingBar />
       </div>
       {isExpandedNowPlaying && <NowPlayingExpandedView />}
+      {showCloseDialog && (
+        <CloseDialog onDismiss={() => setShowCloseDialog(false)} />
+      )}
       <AppUpdateBanner />
       <ToastNotification />
     </>

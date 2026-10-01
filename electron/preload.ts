@@ -18,7 +18,15 @@ const api = {
       const handler = (_: Electron.IpcRendererEvent, fs: boolean) => cb(fs)
       ipcRenderer.on('window:fullscreen-change', handler)
       return () => ipcRenderer.removeListener('window:fullscreen-change', handler)
-    }
+    },
+    onCloseRequested: (cb: () => void) => {
+      const handler = () => cb()
+      ipcRenderer.on('window:close-requested', handler)
+      return () => ipcRenderer.removeListener('window:close-requested', handler)
+    },
+    closeResponse: (choice: 'quit' | 'tray') => {
+      ipcRenderer.send('window:close-response', choice)
+    },
   },
 
   // Shell helpers

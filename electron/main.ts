@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell, ipcMain, protocol, nativeImage, Tray, Menu, dialog } from 'electron'
+import { app, BrowserWindow, shell, ipcMain, protocol, nativeImage, Tray, Menu } from 'electron'
 import { join, extname, normalize } from 'node:path'
 import fs from 'node:fs'
 import { Readable } from 'node:stream'
@@ -118,7 +118,7 @@ function createWindow(): void {
       mainWindow?.webContents.send('window:maximized-change', mainWindow?.isMaximized() ?? false)
     }
   })
-  // When main window is about to close, ask user: Quit or keep in tray?
+  // When main window is about to close, send IPC to renderer to show custom dialog
   mainWindow.on('close', (e) => {
     if (isQuitting) {
       // Actually quitting — let mini player close first
@@ -131,73 +131,8 @@ function createWindow(): void {
     }
 
     e.preventDefault()
-
-    const choice = dialog.showMessageBoxSync(mainWindow!, {
-      type: 'question',
-      buttons: ['Quit Z Phase', 'Keep Playing in Background'],
-      defaultId: 1,
-      cancelId: 0,
-      title: 'Z Phase',
-      message: 'What would you like to do?',
-      detail: 'Keep playing music in the background and access Z Phase from the system tray.',
-    })
-
-    if (choice === 0) {
-      // User chose to quit
-      isQuitting = true
-      if (miniPlayerWindow && !miniPlayerWindow.isDestroyed()) {
-        miniPlayerWindow.removeAllListeners('closed')
-        miniPlayerWindow.close()
-        miniPlayerWindow = null
-      }
-      app.quit()
-    } else {
-      // User chose to keep running — minimize to tray
-      mainWindow!.hide()
-      if (!tray) {
-        const trayIcon = getAppIcon()
-        tray = new Tray(trayIcon as nativeImage)
-        tray.setToolTip('Z Phase — Music Player')
-
-        const contextMenu = Menu.buildFromTemplate([
-          {
-            label: 'Open Z Phase',
-            click: () => {
-              if (mainWindow && !mainWindow.isDestroyed()) {
-                mainWindow.show()
-                mainWindow.focus()
-              }
-            }
-          },
-          { type: 'separator' },
-          {
-            label: 'Quit',
-            click: () => {
-              isQuitting = true
-              if (miniPlayerWindow && !miniPlayerWindow.isDestroyed()) {
-                miniPlayerWindow.removeAllListeners('closed')
-                miniPlayerWindow.close()
-                miniPlayerWindow = null
-              }
-              app.quit()
-            }
-          }
-        ])
-
-        tray.setContextMenu(contextMenu)
-
-        tray.on('click', () => {
-          if (mainWindow && !mainWindow.isDestroyed()) {
-            if (mainWindow.isVisible()) {
-              mainWindow.focus()
-            } else {
-              mainWindow.show()
-              mainWindow.focus()
-            }
-          }
-        })
-      }
-    }
+    // Ask the renderer to show our beautiful custom close dialog
+    mainWindow?.webContents.send('window:close-requested')
   })
 
   mainWindow.on('ready-to-show', () => mainWindow?.show())
@@ -386,6 +321,64 @@ app.whenReady().then(async () => {
   ipcMain.handle('app:force-quit', () => {
     isQuitting = true
     app.quit()
+  })
+  // Response from the renderer's custom close dialog
+  ipcMain.on('window:close-response', (_e, choice: 'quit' | 'tray') => {
+    if (choice === 'quit') {
+      isQuitting = true
+      if (miniPlayerWindow && !miniPlayerWindow.isDestroyed()) {
+        miniPlayerWindow.removeAllListeners('closed')
+        miniPlayerWindow.close()
+        miniPlayerWindow = null
+      }
+      app.quit()
+    } else {
+      // Keep running — hide window and show system tray
+      mainWindow?.hide()
+      if (!tray) {
+        const trayIcon = getAppIcon()
+        tray = new Tray(trayIcon as nativeImage)
+        tray.setToolTip('Z Phase — Music Player')
+
+        const contextMenu = Menu.buildFromTemplate([
+          {
+            label: 'Open Z Phase',
+            click: () => {
+              if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.show()
+                mainWindow.focus()
+              }
+            }
+          },
+          { type: 'separator' },
+          {
+            label: 'Quit',
+            click: () => {
+              isQuitting = true
+              if (miniPlayerWindow && !miniPlayerWindow.isDestroyed()) {
+                miniPlayerWindow.removeAllListeners('closed')
+                miniPlayerWindow.close()
+                miniPlayerWindow = null
+              }
+              app.quit()
+            }
+          }
+        ])
+
+        tray.setContextMenu(contextMenu)
+
+        tray.on('click', () => {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            if (mainWindow.isVisible()) {
+              mainWindow.focus()
+            } else {
+              mainWindow.show()
+              mainWindow.focus()
+            }
+          }
+        })
+      }
+    }
   })
   ipcMain.handle('window:isMaximized', () => {
     const win = BrowserWindow.getFocusedWindow()

@@ -30,6 +30,8 @@ declare global {
         isFullScreen?: () => Promise<boolean>
         onMaximizedChange?: (cb: (maximized: boolean) => void) => () => void
         onFullScreenChange?: (cb: (fullScreen: boolean) => void) => () => void
+        onCloseRequested?: (cb: () => void) => () => void
+        closeResponse?: (choice: 'quit' | 'tray') => void
       }
       shell: {
         showInFolder: (filePath: string) => Promise<void>
