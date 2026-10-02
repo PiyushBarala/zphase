@@ -12,6 +12,14 @@ if (process.platform === 'win32') {
   app.setAppUserModelId('com.zphase.music')
 }
 
+// ─── Single-instance lock ─────────────────────────────────────────
+// If another instance is already running (e.g. minimised to tray),
+// focus that window and quit this new process immediately.
+const gotTheLock = app.requestSingleInstanceLock()
+if (!gotTheLock) {
+  app.quit()
+}
+
 const isDev = process.env.NODE_ENV === 'development'
 
 
@@ -484,6 +492,15 @@ app.whenReady().then(async () => {
   setTimeout(() => {
     checkForUpdatesQuietly()
   }, 6000)
+
+  // When a second instance tries to launch, bring existing window to front
+  app.on('second-instance', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (!mainWindow.isVisible()) mainWindow.show()
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.focus()
+    }
+  })
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
