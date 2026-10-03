@@ -22,6 +22,18 @@ jobs:
           node-version: 20
           cache: 'npm'
 
+      - name: Verify tag matches package.json version
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}".TrimStart('v')
+          $pkg = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          Write-Host "Tag version: $tag"
+          Write-Host "package.json version: $pkg"
+          if ($tag -ne $pkg) {
+            Write-Error "Tag (v$tag) does not match package.json version ($pkg). Commit the version bump BEFORE creating the tag."
+            exit 1
+          }
+
       - name: Install dependencies
         run: npm ci
 
@@ -62,8 +74,22 @@ jobs:
         env:
           NODE_ENV: production
 
-      - name: Package and publish release
-        run: npx electron-builder --win --publish always
+      - name: Package installer (build only, no publishing)
+        run: npx electron-builder --win --publish never
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_ENV: production
+
+      - name: List build output
+        shell: pwsh
+        run: Get-ChildItem dist | Select-Object Name, Length
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.exe
+            dist/*.exe.blockmap
+            dist/latest.yml
+          draft: false
+          generate_release_notes: true
+          fail_on_unmatched_files: true

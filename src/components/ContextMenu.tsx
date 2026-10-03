@@ -5,6 +5,7 @@ import type { Track, Playlist } from '../types'
 import { usePlayerStore } from '../stores/playerStore'
 import { useLibraryStore } from '../stores/libraryStore'
 import { useContextMenuStore } from '../stores/contextMenuStore'
+import { useSelectionStore } from '../stores/selectionStore'
 import { showConfirm } from './ConfirmDialog'
 
 export interface ContextMenuPosition {
@@ -61,6 +62,7 @@ export function ContextMenu({ track, position, onClose, onEditMetadata, onTrackU
   const menuRef = useRef<HTMLDivElement>(null)
   const { addToQueue, playNext } = usePlayerStore()
   const { playlists, refreshPlaylists } = useLibraryStore()
+  const { enterSelectionMode } = useSelectionStore()
   const [showPlaylists, setShowPlaylists] = useState(false)
   const [playlistSubmenuPos, setPlaylistSubmenuPos] = useState({ x: 0, y: 0 })
 
@@ -180,6 +182,18 @@ export function ContextMenu({ track, position, onClose, onEditMetadata, onTrackU
         <p className="text-xs font-semibold text-white truncate">{track.title}</p>
         <p className="text-xs text-[#b3b3b3] truncate">{track.artist}</p>
       </div>
+
+      {/* Select multiple */}
+      <MenuItem
+        label="Select"
+        onClick={() => {
+          enterSelectionMode(track)
+          onClose()
+        }}
+        icon={<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.11 0 2-.9 2-2V5c0-1.1-.89-2-2-2zm-9 14l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>}
+      />
+
+      <Divider />
 
       <MenuItem
         label="Play next"

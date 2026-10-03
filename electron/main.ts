@@ -431,6 +431,16 @@ app.whenReady().then(async () => {
     shell.showItemInFolder(filePath)
   })
 
+  ipcMain.handle('shell:delete-file', async (_e, filePath: string) => {
+    try {
+      await fs.promises.unlink(filePath)
+      return { success: true }
+    } catch (err: any) {
+      console.error('[Shell] Delete file error:', err)
+      return { success: false, error: err.message }
+    }
+  })
+
   // ── Mini player IPC ──────────────────────────────────────────
   // Open mini player
   ipcMain.handle('miniplayer:open', () => createMiniPlayer())

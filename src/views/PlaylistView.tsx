@@ -2,8 +2,10 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useLibraryStore } from '../stores/libraryStore'
 import { usePlayerStore } from '../stores/playerStore'
+import { useSelectionStore } from '../stores/selectionStore'
 import { ArtworkCell } from '../components/ArtworkCell'
 import { ContextMenu, type ContextMenuPosition } from '../components/ContextMenu'
+import { BulkActionBar } from '../components/BulkActionBar'
 import type { Track } from '../types'
 
 function formatDuration(s: number): string {
@@ -29,6 +31,8 @@ export function PlaylistView(): React.JSX.Element {
   const navigate = useNavigate()
   const { playlists, refreshPlaylists } = useLibraryStore()
   const { playTrack, currentTrack, isPlaying, togglePlay, addTracksToQueue } = usePlayerStore()
+
+  const { isSelecting, selectedIds, toggleTrack, selectAll, isSelected, exitSelectionMode } = useSelectionStore()
 
   const isLiked = location.pathname === '/liked' || id === 'liked' || Number(id) === 1
   const playlistId = isLiked ? 1 : Number(id)
@@ -349,6 +353,19 @@ export function PlaylistView(): React.JSX.Element {
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="text-[#b3b3b3] text-left border-b border-[#282828] text-xs font-semibold uppercase tracking-wider">
+                {isSelecting && (
+                  <th className="px-3 py-3 w-10">
+                    <input
+                      type="checkbox"
+                      checked={tracks.length > 0 && tracks.every((t) => t.id && isSelected(t.id))}
+                      onChange={() => {
+                        const allSel = tracks.every((t) => t.id && isSelected(t.id))
+                        allSel ? useSelectionStore.getState().clearAll() : selectAll(tracks)
+                      }}
+                      className="w-4 h-4 accent-[var(--accent)] cursor-pointer rounded"
+                    />
+                  </th>
+                )}
                 <th className="px-3 py-3 w-12 text-center">#</th>
                 <th className="px-3 py-3">Title</th>
                 <th className="px-3 py-3 hidden md:table-cell">Album</th>
@@ -360,17 +377,31 @@ export function PlaylistView(): React.JSX.Element {
             <tbody>
               {tracks.map((track, i) => {
                 const isActive = currentTrack?.filePath === track.filePath
+                const selected = track.id ? isSelected(track.id) : false
                 return (
                   <tr
                     key={track.id || track.filePath}
                     onContextMenu={(e) => {
                       e.preventDefault()
-                      setCtxMenu({ track, pos: { x: e.clientX, y: e.clientY } })
+                      if (!isSelecting) setCtxMenu({ track, pos: { x: e.clientX, y: e.clientY } })
                     }}
-                    className={`group border-b border-[#282828]/40 hover:bg-[#282828]/70 transition-colors ${
+                    onClick={() => { if (isSelecting) toggleTrack(track) }}
+                    className={`group border-b border-[#282828]/40 transition-colors cursor-pointer ${
+                      selected ? 'bg-accent/10 hover:bg-accent/15' : 'hover:bg-[#282828]/70'
+                    } ${
                       isActive ? 'text-[#1DB954]' : 'text-white'
                     }`}
                   >
+                    {isSelecting && (
+                      <td className="px-3 py-2.5 w-10" onClick={(e) => { e.stopPropagation(); toggleTrack(track) }}>
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          readOnly
+                          className="w-4 h-4 accent-[var(--accent)] cursor-pointer rounded pointer-events-none"
+                        />
+                      </td>
+                    )}
                     {/* Track Number / Play Indicator */}
                     <td
                       className="px-3 py-2.5 text-center text-[#b3b3b3] cursor-pointer"
@@ -562,6 +593,12 @@ export function PlaylistView(): React.JSX.Element {
           </div>
         )}
       </div>
+
+      {/* ── Bulk Action Bar (multi-selection) ── */}
+      <BulkActionBar
+        onTrackListUpdated={reloadTracks}
+        currentPlaylistId={isLiked ? undefined : playlistId}
+      />
 
       {/* ── Right-Click Context Menu ── */}
       {ctxMenu && (

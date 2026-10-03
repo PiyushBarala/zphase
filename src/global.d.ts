@@ -35,6 +35,7 @@ declare global {
       }
       shell: {
         showInFolder: (filePath: string) => Promise<void>
+        deleteFile: (filePath: string) => Promise<{ success: boolean; error?: string }>
       }
       library: {
         pickFolder: () => Promise<string | null>

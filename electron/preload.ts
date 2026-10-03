@@ -31,7 +31,8 @@ const api = {
 
   // Shell helpers
   shell: {
-    showInFolder: (filePath: string) => ipcRenderer.invoke('shell:show-in-folder', filePath)
+    showInFolder: (filePath: string) => ipcRenderer.invoke('shell:show-in-folder', filePath),
+    deleteFile: (filePath: string) => ipcRenderer.invoke('shell:delete-file', filePath),
   },
 
   // Feedback / bug reports (proxied through main process to avoid CORS)
