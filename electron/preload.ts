@@ -145,6 +145,8 @@ const api = {
       ipcRenderer.invoke('ytdlp:search', query, offset, limit),
     getRelated: (videoId: string, offset?: number, limit?: number) =>
       ipcRenderer.invoke('ytdlp:getRelated', videoId, offset, limit),
+    getPlaylist: (playlistUrl: string) =>
+      ipcRenderer.invoke('ytdlp:getPlaylist', playlistUrl),
     download: (opts: { videoId: string; title?: string; targetFolder?: string }) =>
       ipcRenderer.invoke('ytdlp:download', opts),
     cancel: (videoId: string) => ipcRenderer.invoke('ytdlp:cancel', videoId),

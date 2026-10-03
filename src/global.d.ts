@@ -100,6 +100,7 @@ declare global {
       ytdlp: {
         search: (query: string, offset?: number, limit?: number) => Promise<YtSearchResult[]>
         getRelated: (videoId: string, offset?: number, limit?: number) => Promise<YtSearchResult[]>
+        getPlaylist: (playlistUrl: string) => Promise<{ title: string; items: YtSearchResult[]; error?: string }>
         download: (opts: { videoId: string; title?: string; targetFolder?: string }) => Promise<{ success: boolean; filePath?: string; error?: string }>
         cancel: (videoId: string) => Promise<boolean>
         getDefaultFolder: () => Promise<string>

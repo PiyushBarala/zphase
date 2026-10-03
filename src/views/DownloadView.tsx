@@ -4,6 +4,22 @@ import { useLibraryStore } from '../stores/libraryStore'
 import { usePlayerStore } from '../stores/playerStore'
 import type { YtSearchResult, DownloadItem, Track } from '../types'
 
+// ── Detect if a string looks like a YouTube playlist or mix URL ──
+function detectYouTubePlaylistUrl(input: string): { isPlaylist: boolean; url: string } {
+  const trimmed = input.trim()
+  try {
+    const url = new URL(trimmed)
+    const isYouTube = url.hostname === 'www.youtube.com' || url.hostname === 'youtube.com' || url.hostname === 'youtu.be' || url.hostname === 'm.youtube.com'
+    if (!isYouTube) return { isPlaylist: false, url: trimmed }
+    const listParam = url.searchParams.get('list')
+    // A playlist URL has a 'list' param; mixes start with 'RD', playlists with 'PL'/'OL'/'FL' etc.
+    if (listParam) return { isPlaylist: true, url: trimmed }
+  } catch {
+    // Not a valid URL — treat as normal search query
+  }
+  return { isPlaylist: false, url: trimmed }
+}
+
 function PreviewThumbnail({
   src,
   alt = '',
@@ -129,6 +145,11 @@ export function DownloadView(): React.JSX.Element {
   const searchInputRef = useRef<HTMLInputElement>(null)
   const lastSeedIdRef = useRef<string | null>(null)
 
+  // ── Playlist mode state ──
+  const [isPlaylistMode, setIsPlaylistMode] = useState(false)
+  const [playlistTitle, setPlaylistTitle] = useState('')
+  const [isLoadingPlaylist, setIsLoadingPlaylist] = useState(false)
+
   // Initialize download folder (prioritizing user's scanFolder, else default music folder)
   useEffect(() => {
     if (!targetFolder) {
@@ -185,6 +206,37 @@ export function DownloadView(): React.JSX.Element {
       setSearchParams({})
     }
 
+    // ── Detect playlist / mix URL ──
+    const { isPlaylist, url } = detectYouTubePlaylistUrl(q)
+    if (isPlaylist) {
+      setIsPlaylistMode(true)
+      setPlaylistTitle('')
+      setIsLoadingPlaylist(true)
+      setHasSearched(true)
+      setHasMore(false)
+      setSearchError(null)
+      setResults([])
+      try {
+        const res = await window.lokal.ytdlp.getPlaylist(url)
+        if (res.error && res.items.length === 0) {
+          setSearchError(res.error)
+          setResults([])
+        } else {
+          setPlaylistTitle(res.title || 'YouTube Playlist')
+          setResults(res.items)
+        }
+      } catch (err: any) {
+        setSearchError(err?.message || 'Failed to fetch playlist. Check the link and your connection.')
+        setResults([])
+      } finally {
+        setIsLoadingPlaylist(false)
+      }
+      return
+    }
+
+    // ── Normal text search ──
+    setIsPlaylistMode(false)
+    setPlaylistTitle('')
     setIsSearching(true)
     setHasSearched(true)
     setHasMore(true)
@@ -207,6 +259,8 @@ export function DownloadView(): React.JSX.Element {
 
   const handleSelectSuggestion = (suggest: string) => {
     setQuery(suggest)
+    setIsPlaylistMode(false)
+    setPlaylistTitle('')
     if (isRelatedMode) {
       setSearchParams({})
     }
@@ -422,7 +476,11 @@ export function DownloadView(): React.JSX.Element {
 
     if (downloadedVideoIds.length > 0) {
       // Create a named radio/mix playlist if in related mix mode
-      const radioName = isRelatedMode ? `Mix: ${seedTitle || 'Radio'}` : `Downloads (${new Date().toLocaleDateString()})`
+      const radioName = isRelatedMode
+        ? `Mix: ${seedTitle || 'Radio'}`
+        : isPlaylistMode && playlistTitle
+        ? playlistTitle
+        : `Downloads (${new Date().toLocaleDateString()})`
       try {
         const pl = await window.lokal.db.createPlaylist(radioName)
         if (pl?.id) {
@@ -448,6 +506,7 @@ export function DownloadView(): React.JSX.Element {
 
   const downloadList = Array.from(downloads.values()).reverse()
   const activeCount = downloadList.filter((d) => d.status === 'downloading' || d.status === 'converting').length
+  const combinedIsSearching = isSearching || isLoadingPlaylist
 
   return (
 <div className="flex flex-col h-full bg-[#121212] text-white overflow-y-auto select-none">
@@ -455,6 +514,8 @@ export function DownloadView(): React.JSX.Element {
       <div className={`px-8 pt-8 pb-6 flex-shrink-0 border-b border-white/5 ${
         isRelatedMode
           ? 'bg-gradient-to-b from-[#1a2538] to-[#121212]'
+          : isPlaylistMode
+          ? 'bg-gradient-to-b from-[#241a38] to-[#121212]'
           : 'bg-gradient-to-b from-[#1a3826] to-[#121212]'
       }`}>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 min-w-0">
@@ -463,11 +524,17 @@ export function DownloadView(): React.JSX.Element {
               <div className={`w-11 h-11 rounded-xl flex-shrink-0 flex items-center justify-center shadow-lg ${
                 isRelatedMode
                   ? 'bg-blue-500/20 border border-blue-500/30 text-blue-400 shadow-blue-500/10'
+                  : isPlaylistMode
+                  ? 'bg-purple-500/20 border border-purple-500/30 text-purple-400 shadow-purple-500/10'
                   : 'bg-accent/20 border border-accent/30 text-accent shadow-accent/10'
               }`}>
                 {isRelatedMode ? (
                   <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
                     <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
+                  </svg>
+                ) : isPlaylistMode ? (
+                  <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
+                    <path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z" />
                   </svg>
                 ) : (
                   <svg viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
@@ -479,19 +546,30 @@ export function DownloadView(): React.JSX.Element {
                 <div className="flex items-center gap-2 min-w-0">
                   <h1
                     className="text-xl md:text-2xl font-extrabold tracking-tight text-white truncate max-w-[400px] lg:max-w-[560px]"
-                    title={isRelatedMode ? `Related to: ${seedTitle || 'Track'}` : 'Search & Download'}
+                    title={
+                      isRelatedMode ? `Related to: ${seedTitle || 'Track'}`
+                      : isPlaylistMode ? (playlistTitle || 'Loading Playlist…')
+                      : 'Search & Download'
+                    }
                   >
-                    {isRelatedMode ? `Related to: ${seedTitle || 'Track'}` : 'Search & Download'}
+                    {isRelatedMode ? `Related to: ${seedTitle || 'Track'}` : isPlaylistMode ? (playlistTitle || 'Loading Playlist…') : 'Search & Download'}
                   </h1>
                   {isRelatedMode && (
                     <span className="flex-shrink-0 text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
                       YouTube Mix
                     </span>
                   )}
+                  {isPlaylistMode && (
+                    <span className="flex-shrink-0 text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                      Playlist
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-[#b3b3b3] mt-0.5 truncate max-w-[620px]">
                   {isRelatedMode
                     ? 'Songs frequently listened to together on YouTube. Preview, download individually, or download all.'
+                    : isPlaylistMode
+                    ? `${results.length > 0 ? results.length + ' tracks' : 'Fetching tracks…'} — preview, download individually, or grab the whole playlist at once.`
                     : 'Search songs by title or artist — downloads directly into your local library as MP3 with tags & artwork.'}
                 </p>
               </div>
@@ -500,9 +578,17 @@ export function DownloadView(): React.JSX.Element {
 
           {/* Right Action: Target Folder Selector & Back button */}
           <div className="flex items-center gap-3 flex-shrink-0">
-            {isRelatedMode && (
+            {(isRelatedMode || isPlaylistMode) && (
               <button
-                onClick={() => setSearchParams({})}
+                onClick={() => {
+                  setSearchParams({})
+                  if (isPlaylistMode) {
+                    setIsPlaylistMode(false)
+                    setPlaylistTitle('')
+                    setResults([])
+                    setHasSearched(false)
+                  }
+                }}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition-all hover:scale-105 cursor-pointer"
               >
                 ← Back to Search
@@ -541,7 +627,9 @@ export function DownloadView(): React.JSX.Element {
               placeholder={
                 isRelatedMode
                   ? `Search another song instead of "${seedTitle && seedTitle.length > 25 ? seedTitle.slice(0, 25) + '...' : (seedTitle || 'this')}"...`
-                  : "Enter song name, artist, or lyrics..."
+                  : isPlaylistMode
+                  ? 'Paste another playlist URL or search by name…'
+                  : "Enter song name, artist, lyrics, or paste a playlist URL…"
               }
               className="w-full bg-[#242424] hover:bg-[#2a2a2a] focus:bg-[#282828] text-white text-sm rounded-full pl-11 pr-10 py-3.5 outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-accent transition-all shadow-inner"
             />
@@ -732,10 +820,12 @@ export function DownloadView(): React.JSX.Element {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-bold text-white tracking-tight">
-                {isSearching
-                  ? (isRelatedMode ? 'Loading YouTube Mix…' : 'Searching YouTube…')
+                {combinedIsSearching
+                  ? (isRelatedMode ? 'Loading YouTube Mix…' : isPlaylistMode ? 'Fetching Playlist…' : 'Searching YouTube…')
                   : isRelatedMode
                   ? `Mix Tracks (${results.length})`
+                  : isPlaylistMode
+                  ? (playlistTitle ? `${playlistTitle} (${results.length} tracks)` : `Playlist Tracks (${results.length})`)
                   : hasSearched
                   ? `Results for "${query}" (${results.length})`
                   : 'Search Results'}
@@ -790,18 +880,22 @@ export function DownloadView(): React.JSX.Element {
             )}
           </div>
 
-          {/* State: Searching */}
-          {isSearching && (
+          {/* State: Searching / Loading playlist */}
+          {combinedIsSearching && (
             <div className="flex flex-col items-center justify-center py-16 text-[#888] gap-3">
               <span className="w-8 h-8 border-3 border-accent border-t-transparent rounded-full animate-spin" />
               <p className="text-sm">
-                {isRelatedMode ? 'Fetching YouTube Mix playlist without downloading...' : 'Fetching songs without downloading...'}
+                {isLoadingPlaylist
+                  ? 'Fetching all tracks from playlist without downloading…'
+                  : isRelatedMode
+                  ? 'Fetching YouTube Mix playlist without downloading...'
+                  : 'Fetching songs without downloading...'}
               </p>
             </div>
           )}
 
           {/* State: Network error */}
-          {!isSearching && searchError && (
+          {!combinedIsSearching && searchError && (
             <div className="flex flex-col items-center justify-center py-12 text-center text-[#888] gap-3 bg-red-500/5 border border-red-500/20 rounded-2xl p-6">
               <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center text-red-400">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="24" height="24">
@@ -826,7 +920,7 @@ export function DownloadView(): React.JSX.Element {
           )}
 
           {/* State: No results after search */}
-          {!isSearching && hasSearched && !searchError && results.length === 0 && (
+          {!combinedIsSearching && hasSearched && !searchError && results.length === 0 && (
             <div className="flex flex-col items-center justify-center py-16 text-center text-[#888] gap-2">
               <svg viewBox="0 0 24 24" fill="currentColor" width="48" height="48" className="opacity-30">
                 <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
@@ -837,7 +931,7 @@ export function DownloadView(): React.JSX.Element {
           )}
 
           {/* State: Initial landing hint before searching */}
-          {!isSearching && !hasSearched && (
+          {!combinedIsSearching && !hasSearched && (
             <div className="flex flex-col items-center justify-center py-16 text-center text-[#888] gap-3 bg-[#151515] rounded-2xl border border-white/5 p-8">
               <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center text-white/50 mb-1">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="32" height="32">
@@ -845,10 +939,14 @@ export function DownloadView(): React.JSX.Element {
                   <circle cx="11" cy="11" r="8" />
                 </svg>
               </div>
-              <h3 className="text-lg font-bold text-white">Search any song by name</h3>
+              <h3 className="text-lg font-bold text-white">Search any song or paste a playlist link</h3>
               <p className="text-sm text-[#b3b3b3] max-w-md">
-                No URLs or links needed. Simply type your favorite tracks or artists above to preview results and download directly as tagged MP3s.
+                Type a song name, artist, or paste a YouTube playlist / mix URL to download all tracks at once.
               </p>
+              {/* URL format hint */}
+              <div className="mt-1 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs text-[#777] font-mono max-w-md text-center break-all">
+                youtube.com/playlist?list=… or youtube.com/watch?v=…&list=RD…
+              </div>
               <div className="flex flex-wrap gap-2 justify-center mt-2">
                 {['AP Dhillon Desires', 'Dope Shope', 'Arijit Singh', 'Shape of You', 'Diljit Dosanjh'].map((suggest) => (
                   <button
@@ -864,7 +962,7 @@ export function DownloadView(): React.JSX.Element {
           )}
 
           {/* Results List */}
-          {!isSearching && results.length > 0 && (
+          {!combinedIsSearching && results.length > 0 && (
             <div className="flex flex-col gap-1.5">
               {results.map((item, idx) => {
                 const currentDownload = downloads.get(item.id)

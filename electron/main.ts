@@ -151,7 +151,21 @@ function createWindow(): void {
     mainWindow?.webContents.send('window:close-requested')
   })
 
-  mainWindow.on('ready-to-show', () => mainWindow?.show())
+  mainWindow.on('ready-to-show', () => {
+    mainWindow?.show()
+    // Lock zoom to 100% — prevent Ctrl+/Ctrl- from zooming the UI
+    mainWindow?.webContents.setZoomFactor(1)
+    mainWindow?.webContents.setVisualZoomLevelLimits(1, 1)
+  })
+
+  // Block Ctrl+=, Ctrl+-, Ctrl+0 zoom shortcuts before Chromium handles them
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.control || input.meta) {
+      if (input.key === '=' || input.key === '+' || input.key === '-' || input.key === '_' || input.key === '0') {
+        event.preventDefault()
+      }
+    }
+  })
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }

@@ -533,7 +533,87 @@ export function registerYtDlpHandlers(): void {
     return result.filePaths[0]
   })
 
-  // ── 6. Get related tracks (YouTube Mix) ──
+  // ── 6. Fetch all tracks from a YouTube playlist or mix URL ──
+  ipcMain.handle(
+    'ytdlp:getPlaylist',
+    async (_event, playlistUrl: string): Promise<{ title: string; items: YtSearchResult[]; error?: string }> => {
+      const url = (playlistUrl || '').trim()
+      if (!url) return { title: '', items: [], error: 'No URL provided' }
+
+      const ytDlpPath = getYtDlpPath()
+      console.log(`[yt-dlp playlist] Fetching playlist: ${url} using ${ytDlpPath}`)
+
+      return new Promise((resolve) => {
+        const args = [
+          url,
+          '--yes-playlist',
+          '--flat-playlist',
+          '--dump-json',
+          '--no-download',
+        ]
+
+        const proc = spawn(ytDlpPath, args, { windowsHide: true })
+
+        let stdout = ''
+        let stderr = ''
+
+        proc.stdout.on('data', (data) => { stdout += data.toString() })
+        proc.stderr.on('data', (data) => { stderr += data.toString() })
+
+        proc.on('error', (err) => {
+          console.error('[yt-dlp playlist] Process error:', err)
+          resolve({ title: '', items: [], error: err.message })
+        })
+
+        proc.on('close', (code) => {
+          if (code !== 0 && stdout.trim().length === 0) {
+            const errMsg = stderr.split('\n').find((l) => l.includes('ERROR:'))?.replace(/^.*ERROR:\s*/, '') || 'Failed to fetch playlist'
+            console.error(`[yt-dlp playlist] Exited with code ${code}:`, stderr)
+            resolve({ title: '', items: [], error: errMsg })
+            return
+          }
+
+          const lines = stdout.split('\n').map((l) => l.trim()).filter((l) => l.startsWith('{'))
+          const items: YtSearchResult[] = []
+          let playlistTitle = ''
+
+          for (const line of lines) {
+            try {
+              const item = JSON.parse(line)
+              // Capture playlist-level title from the first entry that has it
+              if (!playlistTitle && item.playlist_title) {
+                playlistTitle = item.playlist_title
+              }
+
+              const itemId = item.id || ''
+              if (!itemId) continue
+
+              const thumbnail = getPreviewThumbnail(item, itemId)
+              const durationSec = typeof item.duration === 'number' ? item.duration : 0
+              const durationString = item.duration_string || formatDuration(durationSec)
+
+              items.push({
+                id: itemId,
+                title: item.title || 'Unknown Title',
+                uploader: item.uploader || item.channel || item.uploader_id || 'Unknown Artist',
+                duration: durationSec,
+                durationString,
+                thumbnail,
+                url: item.url || item.webpage_url || `https://www.youtube.com/watch?v=${itemId}`,
+              })
+            } catch (e) {
+              console.error('[yt-dlp playlist] Error parsing JSON line:', e)
+            }
+          }
+
+          console.log(`[yt-dlp playlist] Found ${items.length} tracks in playlist "${playlistTitle}"`)
+          resolve({ title: playlistTitle, items })
+        })
+      })
+    }
+  )
+
+  // ── 7. Get related tracks (YouTube Mix) ──
   ipcMain.handle(
     'ytdlp:getRelated',
     async (_event, videoId: string, offset: number = 1, limit: number = 20): Promise<YtSearchResult[]> => {
@@ -623,7 +703,7 @@ export function registerYtDlpHandlers(): void {
     })
   })
 
-  // ── 6. Sync entire folder (ensures all downloaded MP3s in directory are indexed) ──
+  // ── 8. Sync entire folder (ensures all downloaded MP3s in directory are indexed) ──
   ipcMain.handle('ytdlp:sync-folder', async (_event, folderPath?: string) => {
     return syncFolderTracks(folderPath)
   })
