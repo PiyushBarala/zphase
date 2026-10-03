@@ -33,7 +33,7 @@ win:
       arch:
         - x64
   icon: build/icon.ico
-  artifactName: ${productName}-Setup-${version}.${ext}
+  artifactName: ZPhase-Setup-${version}.${ext}
 nsis:
   include: build/installer.nsh
   installerIcon: build/icon.ico
@@ -46,4 +46,4 @@ nsis:
   shortcutName: Z Phase
   runAfterFinish: true
 portable:
-  artifactName: ${productName}-Portable-${version}.${ext}
+  artifactName: ZPhase-Portable-${version}.${ext}
